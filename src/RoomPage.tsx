@@ -54,16 +54,29 @@ function RoomPage({ id }: { id: string }) {
                 ),
             )}
           </ul>
-          <label className="button">
-            {adding ? 'Adding…' : 'Add plant'}
-            <input
-              className="visually-hidden"
-              type="file"
-              accept="image/*"
-              disabled={adding}
-              onChange={handlePhoto}
-            />
-          </label>
+          <div className="photo-actions">
+            <label className="button">
+              {adding ? 'Adding…' : 'Take photo'}
+              <input
+                className="visually-hidden"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                disabled={adding}
+                onChange={handlePhoto}
+              />
+            </label>
+            <label className="button secondary">
+              Choose photo
+              <input
+                className="visually-hidden"
+                type="file"
+                accept="image/*"
+                disabled={adding}
+                onChange={handlePhoto}
+              />
+            </label>
+          </div>
         </>
       )}
     </>

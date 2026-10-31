@@ -94,6 +94,17 @@ button:disabled {
   font: inherit;
 }
 
+.photo-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.button.secondary {
+  background: none;
+  box-shadow: inset 0 0 0 1px #8888;
+  color: inherit;
+}
+
 .plants {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
