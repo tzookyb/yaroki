@@ -46,7 +46,7 @@ function RoomsPage() {
           </li>
         ))}
       </ul>
-      <form className="add-room" onSubmit={handleSubmit}>
+      <form className="inline-form" onSubmit={handleSubmit}>
         <input
           aria-label="Room name"
           placeholder="Living room"
