@@ -1,39 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useSyncExternalStore } from 'react'
+import RoomPage from './RoomPage'
+import RoomsPage from './RoomsPage'
 
-type Plant = {
-  id: number
-  name: string
-  location: string | null
+function subscribeToHash(onChange: () => void) {
+  window.addEventListener('hashchange', onChange)
+  return () => window.removeEventListener('hashchange', onChange)
 }
 
 function App() {
-  const [plants, setPlants] = useState<Plant[] | null>(null)
-  const [error, setError] = useState(false)
-
-  useEffect(() => {
-    fetch('/api/plants')
-      .then((response) => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`)
-        return response.json()
-      })
-      .then(setPlants)
-      .catch(() => setError(true))
-  }, [])
+  const hash = useSyncExternalStore(subscribeToHash, () => window.location.hash)
+  const roomId = hash.match(/^#\/rooms\/(\d+)$/)?.[1]
 
   return (
-    <main>
-      <h1>Plants Tracker</h1>
-      {error && <p>Could not load plants.</p>}
-      {plants?.length === 0 && <p>No plants yet.</p>}
-      <ul>
-        {plants?.map((plant) => (
-          <li key={plant.id}>
-            {plant.name}
-            {plant.location && ` (${plant.location})`}
-          </li>
-        ))}
-      </ul>
-    </main>
+    <main>{roomId ? <RoomPage key={roomId} id={roomId} /> : <RoomsPage />}</main>
   )
 }
 

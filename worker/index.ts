@@ -1,6 +1,9 @@
 const DAILY_WATERING_CHECK = '0 6 * * *'
 const WEEKLY_AI_CARE_CHECK = '0 7 * * 0'
 
+// Photos are resized to ~1024px WebP on the client, so this is only a sanity limit.
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024
+
 export default {
   async fetch(request, env) {
     const { pathname } = new URL(request.url)
@@ -14,6 +17,91 @@ export default {
         'SELECT * FROM plants ORDER BY created_at DESC',
       ).all()
       return Response.json(results)
+    }
+
+    if (request.method === 'GET' && pathname === '/api/rooms') {
+      const { results } = await env.DB.prepare(
+        `SELECT rooms.*, COUNT(plants.id) AS plant_count
+         FROM rooms
+         LEFT JOIN plants ON plants.room_id = rooms.id
+         GROUP BY rooms.id
+         ORDER BY rooms.name COLLATE NOCASE`,
+      ).all()
+      return Response.json(results)
+    }
+
+    if (request.method === 'POST' && pathname === '/api/rooms') {
+      const body = await request.json<{ name?: unknown }>().catch(() => null)
+      const name = typeof body?.name === 'string' ? body.name.trim() : ''
+      if (!name) {
+        return Response.json({ error: 'Name is required' }, { status: 400 })
+      }
+      const room = await env.DB.prepare(
+        'INSERT INTO rooms (name) VALUES (?) RETURNING *',
+      )
+        .bind(name)
+        .first()
+      return Response.json(room, { status: 201 })
+    }
+
+    const roomId = pathname.match(/^\/api\/rooms\/(\d+)$/)?.[1]
+    if (request.method === 'GET' && roomId) {
+      const room = await env.DB.prepare('SELECT * FROM rooms WHERE id = ?')
+        .bind(roomId)
+        .first()
+      if (!room) {
+        return Response.json({ error: 'Room not found' }, { status: 404 })
+      }
+      const { results: plants } = await env.DB.prepare(
+        'SELECT * FROM plants WHERE room_id = ? ORDER BY created_at DESC, id DESC',
+      )
+        .bind(roomId)
+        .all()
+      return Response.json({ ...room, plants })
+    }
+
+    const plantRoomId = pathname.match(/^\/api\/rooms\/(\d+)\/plants$/)?.[1]
+    if (request.method === 'POST' && plantRoomId) {
+      if (request.headers.get('Content-Type') !== 'image/webp') {
+        return Response.json(
+          { error: 'Photo must be image/webp' },
+          { status: 415 },
+        )
+      }
+      const room = await env.DB.prepare('SELECT id FROM rooms WHERE id = ?')
+        .bind(plantRoomId)
+        .first()
+      if (!room) {
+        return Response.json({ error: 'Room not found' }, { status: 404 })
+      }
+      const photo = await request.arrayBuffer()
+      if (photo.byteLength === 0 || photo.byteLength > MAX_PHOTO_BYTES) {
+        return Response.json({ error: 'Invalid photo size' }, { status: 413 })
+      }
+      const photoKey = `plants/${crypto.randomUUID()}.webp`
+      await env.PHOTOS.put(photoKey, photo, {
+        httpMetadata: { contentType: 'image/webp' },
+      })
+      const plant = await env.DB.prepare(
+        'INSERT INTO plants (room_id, photo_key) VALUES (?, ?) RETURNING *',
+      )
+        .bind(plantRoomId, photoKey)
+        .first()
+      return Response.json(plant, { status: 201 })
+    }
+
+    const photoKey = pathname.match(/^\/api\/photos\/(.+)$/)?.[1]
+    if (request.method === 'GET' && photoKey) {
+      const photo = await env.PHOTOS.get(decodeURIComponent(photoKey))
+      if (!photo) {
+        return Response.json({ error: 'Photo not found' }, { status: 404 })
+      }
+      const headers = new Headers()
+      photo.writeHttpMetadata(headers)
+      headers.set('ETag', photo.httpEtag)
+      // Keys are random and photos are never overwritten.
+      headers.set('Cache-Control', 'public, max-age=31536000, immutable')
+      return new Response(photo.body, { headers })
     }
 
     return Response.json({ error: 'Not found' }, { status: 404 })
