@@ -11,6 +11,7 @@ Personal PWA for tracking the plants in my home.
 
 ```bash
 npm install
+cp .dev.vars.example .dev.vars # then set APP_PASSWORD
 npm run db:migrate:local
 npm run dev
 ```
@@ -23,12 +24,17 @@ After changing `wrangler.jsonc`, run `npm run cf-typegen` to refresh `worker-con
 
 Copy `.dev.vars.example` to `.dev.vars` for local dev. In production use `npx wrangler secret put <NAME>`. Never commit either value.
 
+## Sign-in
+
+`APP_PASSWORD` protects every API route except `/api/health` and `/api/login`. If it is unset, nobody can sign in. Changing it signs out every device.
+
 ## Deploying
 
 ```bash
 npx wrangler login
 npm run deploy
 npm run db:migrate:remote
+npx wrangler secret put APP_PASSWORD
 ```
 
 The first deploy creates the D1 database and R2 bucket from the bindings in `wrangler.jsonc`.

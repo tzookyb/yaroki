@@ -80,12 +80,12 @@ button:disabled {
   text-decoration: none;
 }
 
-.add-room {
+.inline-form {
   display: flex;
   gap: 0.5rem;
 }
 
-.add-room input {
+.inline-form input {
   flex: 1;
   min-width: 0;
   padding: 0.6rem;

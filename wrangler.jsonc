@@ -21,6 +21,14 @@
       "bucket_name": "plants-tracker-photos"
     }
   ],
+  "ratelimits": [
+    {
+      // Per Cloudflare location, on the login route only.
+      "name": "LOGIN_LIMIT",
+      "namespace_id": "1001",
+      "simple": { "limit": 10, "period": 60 }
+    }
+  ],
   "triggers": {
     // Cron runs in UTC. 06:00 UTC is 08:00/09:00 in Asia/Jerusalem.
     // Keep in sync with the switch in worker/index.ts.

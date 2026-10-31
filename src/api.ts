@@ -21,6 +21,19 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   return response.json()
 }
 
+export async function isSignedIn() {
+  const response = await fetch('/api/session')
+  return response.ok
+}
+
+export function signIn(password: string) {
+  return request('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  })
+}
+
 export function getRooms() {
   return request<Room[]>('/api/rooms')
 }

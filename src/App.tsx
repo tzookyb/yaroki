@@ -1,4 +1,6 @@
-import { useSyncExternalStore } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
+import { isSignedIn } from './api'
+import LoginPage from './LoginPage'
 import RoomPage from './RoomPage'
 import RoomsPage from './RoomsPage'
 
@@ -10,9 +12,26 @@ function subscribeToHash(onChange: () => void) {
 function App() {
   const hash = useSyncExternalStore(subscribeToHash, () => window.location.hash)
   const roomId = hash.match(/^#\/rooms\/(\d+)$/)?.[1]
+  const [signedIn, setSignedIn] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    isSignedIn()
+      .then(setSignedIn)
+      .catch(() => setSignedIn(false))
+  }, [])
+
+  if (signedIn === null) return null
 
   return (
-    <main>{roomId ? <RoomPage key={roomId} id={roomId} /> : <RoomsPage />}</main>
+    <main>
+      {!signedIn ? (
+        <LoginPage onSignIn={() => setSignedIn(true)} />
+      ) : roomId ? (
+        <RoomPage key={roomId} id={roomId} />
+      ) : (
+        <RoomsPage />
+      )}
+    </main>
   )
 }
 

@@ -1,3 +1,5 @@
+import { isSignedIn, signIn } from './auth'
+
 const DAILY_WATERING_CHECK = '0 6 * * *'
 const WEEKLY_AI_CARE_CHECK = '0 7 * * 0'
 
@@ -9,6 +11,19 @@ export default {
     const { pathname } = new URL(request.url)
 
     if (request.method === 'GET' && pathname === '/api/health') {
+      return Response.json({ ok: true })
+    }
+
+    if (request.method === 'POST' && pathname === '/api/login') {
+      return signIn(request, env)
+    }
+
+    // Every route below this line needs a session.
+    if (!(await isSignedIn(request, env))) {
+      return Response.json({ error: 'Not signed in' }, { status: 401 })
+    }
+
+    if (request.method === 'GET' && pathname === '/api/session') {
       return Response.json({ ok: true })
     }
 
@@ -99,8 +114,8 @@ export default {
       const headers = new Headers()
       photo.writeHttpMetadata(headers)
       headers.set('ETag', photo.httpEtag)
-      // Keys are random and photos are never overwritten.
-      headers.set('Cache-Control', 'public, max-age=31536000, immutable')
+      // Keys are random and photos are never overwritten. Private because they need a session.
+      headers.set('Cache-Control', 'private, max-age=31536000, immutable')
       return new Response(photo.body, { headers })
     }
 
