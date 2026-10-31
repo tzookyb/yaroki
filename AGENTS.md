@@ -59,7 +59,7 @@ The phone can't reach the Mac over home Wi-Fi, so phone testing goes through the
 - R2: free 10 GB. `MAX_PHOTO_BYTES` × `MAX_PLANTS` in `worker/index.ts` is what keeps it under that, so raising either breaks the guarantee.
 - Cron Triggers: 5 per Cloudflare account.
 
-- Gemini: the free tier is used in `worker/gemini.ts`, and Google may use free-tier prompts, photos included, to improve its products. Current free-tier quotas are shown in AI Studio, not in the docs.
+- Gemini: the model is `gemini-3.5-flash-lite`, because `gemini-3.8-flash` took over 25 s on a plant photo. The free tier is used in `worker/gemini.ts`, and Google may use free-tier prompts, photos included, to improve its products. Current free-tier quotas are shown in AI Studio, not in the docs.
 
 ## Gotchas
 
