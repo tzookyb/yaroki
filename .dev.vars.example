@@ -1,0 +1,4 @@
+# Copy to .dev.vars for local dev. Never commit .dev.vars.
+# In production set these with: npx wrangler secret put <NAME>
+GEMINI_API_KEY=
+VAPID_PRIVATE_KEY=
