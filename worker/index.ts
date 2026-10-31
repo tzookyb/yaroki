@@ -206,8 +206,8 @@ export default {
       }
       const updated = await env.DB.prepare(
         `UPDATE plants
-         SET name = ?, species = ?, common_name = ?, category = ?, light_needs = ?,
-             water_every_days = ?
+         SET name = ?, species = ?, common_name = ?, english_name = ?, category = ?,
+             light_needs = ?, water_every_days = ?
          WHERE id = ?
          RETURNING *`,
       )
@@ -215,6 +215,7 @@ export default {
           identification.common_name,
           identification.species,
           identification.common_name,
+          identification.english_name,
           identification.category,
           identification.light_needs,
           identification.water_every_days,
