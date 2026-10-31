@@ -1,12 +1,10 @@
-import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useEffect, useState, type ChangeEvent } from 'react'
 import {
   addPlant,
   deletePlant,
-  deleteRoom,
   getRoom,
   identifyPlant,
   photoUrl,
-  renameRoom,
   type Plant,
   type RoomDetails,
 } from './api'
@@ -40,7 +38,7 @@ function RoomPage({ id }: { id: string }) {
   const [room, setRoom] = useState<RoomDetails | null>(null)
   const [adding, setAdding] = useState(false)
   const [identifying, setIdentifying] = useState<number[]>([])
-  const [newName, setNewName] = useState<string | null>(null)
+  const [choosingPhoto, setChoosingPhoto] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -75,6 +73,7 @@ function RoomPage({ id }: { id: string }) {
     event.target.value = ''
     if (!file) return
 
+    setChoosingPhoto(false)
     setAdding(true)
     setError(null)
     let plant: Plant
@@ -112,80 +111,11 @@ function RoomPage({ id }: { id: string }) {
     }
   }
 
-  async function handleRename(event: FormEvent) {
-    event.preventDefault()
-    if (!newName) return
-
-    setError(null)
-    try {
-      const { name } = await renameRoom(id, newName)
-      setRoom((current) => current && { ...current, name })
-      setNewName(null)
-    } catch {
-      setError('לא הצלחנו לשנות את השם.')
-    }
-  }
-
-  async function handleDeleteRoom() {
-    if (!room) return
-    const message =
-      room.plants.length === 0
-        ? `למחוק את החדר "${room.name}"?`
-        : `למחוק את החדר "${room.name}" ואת כל הצמחים שבו (${room.plants.length}) עם התמונות שלהם? אי אפשר לבטל את הפעולה.`
-    if (!window.confirm(message)) return
-
-    setError(null)
-    try {
-      await deleteRoom(id)
-      window.location.hash = '#/'
-    } catch {
-      setError('לא הצלחנו למחוק את החדר.')
-    }
-  }
-
   return (
     <>
       <a href="#/">→ חדרים</a>
       <h1>{room?.name}</h1>
       {error && <p role="alert">{error}</p>}
-      {room &&
-        (newName === null ? (
-          <div className="room-actions">
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => setNewName(room.name)}
-            >
-              שינוי שם
-            </button>
-            <button
-              type="button"
-              className="secondary"
-              onClick={handleDeleteRoom}
-            >
-              מחיקת חדר
-            </button>
-          </div>
-        ) : (
-          <form className="inline-form room-actions" onSubmit={handleRename}>
-            <input
-              aria-label="שם החדר"
-              autoFocus
-              value={newName}
-              onChange={(event) => setNewName(event.target.value)}
-            />
-            <button type="submit" disabled={!newName.trim()}>
-              שמירה
-            </button>
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => setNewName(null)}
-            >
-              ביטול
-            </button>
-          </form>
-        ))}
       {room?.plants.length === 0 && <p>אין עדיין צמחים בחדר הזה.</p>}
       {room && (
         <>
@@ -257,29 +187,37 @@ function RoomPage({ id }: { id: string }) {
                 ),
             )}
           </ul>
-          <div className="photo-actions">
-            <label className="button">
-              {adding ? 'מוסיפים…' : 'צילום'}
-              <input
-                className="visually-hidden"
-                type="file"
-                accept="image/*"
-                capture="environment"
-                disabled={adding}
-                onChange={handlePhoto}
-              />
-            </label>
-            <label className="button secondary">
-              בחירת תמונה
-              <input
-                className="visually-hidden"
-                type="file"
-                accept="image/*"
-                disabled={adding}
-                onChange={handlePhoto}
-              />
-            </label>
-          </div>
+          <button
+            type="button"
+            disabled={adding}
+            aria-expanded={choosingPhoto}
+            onClick={() => setChoosingPhoto(!choosingPhoto)}
+          >
+            {adding ? 'מוסיפים…' : 'הוספת צמח'}
+          </button>
+          {choosingPhoto && (
+            <div className="photo-actions">
+              <label className="button secondary">
+                צילום
+                <input
+                  className="visually-hidden"
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handlePhoto}
+                />
+              </label>
+              <label className="button secondary">
+                בחירה מהגלריה
+                <input
+                  className="visually-hidden"
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhoto}
+                />
+              </label>
+            </div>
+          )}
         </>
       )}
     </>
