@@ -22,3 +22,88 @@ main {
   margin: 0 auto;
   padding: 1rem;
 }
+
+a {
+  color: inherit;
+}
+
+ul {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+}
+
+button,
+.button {
+  display: inline-block;
+  box-sizing: border-box;
+  padding: 0.6rem 1rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: #2f6b3f;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.button:focus-within {
+  outline: 2px solid #2f6b3f;
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.muted {
+  opacity: 0.65;
+}
+
+.rooms li + li {
+  border-top: 1px solid #8884;
+}
+
+.rooms a {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  text-decoration: none;
+}
+
+.add-room {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.add-room input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.6rem;
+  border: 1px solid #8888;
+  border-radius: 0.5rem;
+  font: inherit;
+}
+
+.plants {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+  gap: 0.5rem;
+}
+
+.plants img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 0.5rem;
+}
