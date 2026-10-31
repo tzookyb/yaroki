@@ -1,6 +1,8 @@
-const MODEL = 'gemini-3.8-flash'
+// Flash-Lite, because gemini-3.8-flash took over 25 s on a plant photo in production.
+const MODEL = 'gemini-3.5-flash-lite'
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`
-const TIMEOUT_MS = 25_000
+const TIMEOUT_MS = 45_000
+const MAX_ERROR_CHARS = 500
 
 const CATEGORIES = [
   'foliage',
@@ -92,7 +94,10 @@ export async function identifyPlant(
       },
     }),
   })
-  if (!response.ok) throw new Error(`Gemini HTTP ${response.status}`)
+  if (!response.ok) {
+    const details = (await response.text()).slice(0, MAX_ERROR_CHARS)
+    throw new Error(`Gemini HTTP ${response.status}: ${details}`)
+  }
 
   const data = await response.json<GeminiResponse>()
   const text = data.candidates?.[0]?.content?.parts
