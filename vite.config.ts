@@ -11,9 +11,11 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Plants Tracker',
-        short_name: 'Plants',
-        description: 'Track the plants in my home',
+        name: 'מעקב צמחים',
+        short_name: 'צמחים',
+        description: 'מעקב אחר הצמחים בבית',
+        lang: 'he',
+        dir: 'rtl',
         theme_color: '#2f6b3f',
         background_color: '#f6f7f2',
         display: 'standalone',

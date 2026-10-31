@@ -17,16 +17,18 @@ One npm package. `@cloudflare/vite-plugin` runs the frontend and the Worker toge
 
 ## Status
 
-Built: password sign-in, rooms, adding a plant to a room from just a photo.
+Built: password sign-in, rooms (add, rename, delete), plants (add from a photo, delete), and AI species ID on add.
+
+The UI is Hebrew and right-to-left. Hebrew text lives directly in the components, there is no i18n layer. Gemini returns the plant's name in Hebrew and the species in Latin. `category` and `light_needs` are stored as English enum values, and `src/RoomPage.tsx` holds their Hebrew labels.
 
 Planned:
 
-- AI species ID and categorization on add: Gemini free tier (Flash / Flash-Lite), structured JSON output. Free-tier prompts may be used by Google. Pl@ntNet is an optional extra for accuracy.
+- Pl@ntNet as an optional extra for ID accuracy
 - Watering reminders by Web Push (VAPID), with a "Watered ✓" notification action that updates the DB
 - Weekly AI care check (fertilize, repot, pests, seasonal tips) that pushes only if action is needed
 - Optional: "check my plant" photo diagnosis, Google Calendar integration
 
-The cron handlers in `worker/index.ts` are stubs. The `events` and `push_subscriptions` tables and the AI columns on `plants` exist but nothing uses them yet.
+The cron handlers in `worker/index.ts` are stubs. The `events` and `push_subscriptions` tables and the `last_watered` and `care_notes` columns exist but nothing uses them yet.
 
 ## Commands
 
@@ -48,7 +50,7 @@ The phone can't reach the Mac over home Wi-Fi, so phone testing goes through the
 - Never commit a secret to any file. Production uses `npx wrangler secret put <NAME>`, local dev uses the git-ignored `.dev.vars`. `.dev.vars.example` lists the names with empty values.
 - `APP_PASSWORD` gates every API route except `/api/health` and `/api/login`. New routes go below the sign-in check in `worker/index.ts`.
 - A missing `APP_PASSWORD` must keep the API locked. Changing it signs out every device, because the session token is derived from it.
-- `GEMINI_API_KEY` and `VAPID_PRIVATE_KEY` are reserved for the planned features.
+- `GEMINI_API_KEY` powers plant ID. Without it the identify route returns 503 and the rest of the app still works. `VAPID_PRIVATE_KEY` is reserved for push.
 
 ## Free-tier limits
 
@@ -57,6 +59,8 @@ The phone can't reach the Mac over home Wi-Fi, so phone testing goes through the
 - R2: free 10 GB. `MAX_PHOTO_BYTES` × `MAX_PLANTS` in `worker/index.ts` is what keeps it under that, so raising either breaks the guarantee.
 - Cron Triggers: 5 per Cloudflare account.
 
+- Gemini: the free tier is used in `worker/gemini.ts`, and Google may use free-tier prompts, photos included, to improve its products. Current free-tier quotas are shown in AI Studio, not in the docs.
+
 ## Gotchas
 
 - Cron runs in UTC and the user is in Asia/Jerusalem, which shifts between UTC+2 and UTC+3.
@@ -64,4 +68,7 @@ The phone can't reach the Mac over home Wi-Fi, so phone testing goes through the
 - Cloudflare rejects `0` as a day of the week. Use `SUN`.
 - Never rebuild `plants` with `DROP TABLE` in a migration: it cascades and deletes `events`. Use column swaps, as in `migrations/0002_rooms.sql`.
 - Migrations don't run on deploy. Run `db:migrate:remote` yourself, before deploying code that needs the new schema.
+- Adding a plant and identifying it are two requests (`POST /api/rooms/:id/plants`, then `POST /api/plants/:id/identify`), so a Gemini failure never loses the photo and the UI can offer a retry.
+- Base64-encoding a photo for Gemini must use the native `Uint8Array.toBase64()`. A JS loop took about 5 ms for a typical photo and 45 ms at `MAX_PHOTO_BYTES`, over the CPU limit.
+- Deleting a plant or room removes its R2 photos first, so a failed delete can be retried without orphaning anything. `plants.room_id` is `ON DELETE SET NULL`, so deleting a room must delete its plants explicitly.
 - Photos must reach the API as `image/webp`. `src/photo.ts` resizes to 1024px on the client. Photo keys are immutable and cached for a year, so a replaced photo needs a new key.

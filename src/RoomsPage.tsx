@@ -10,7 +10,7 @@ function RoomsPage() {
   useEffect(() => {
     getRooms()
       .then(setRooms)
-      .catch(() => setError('Could not load rooms.'))
+      .catch(() => setError('לא הצלחנו לטעון את החדרים.'))
   }, [])
 
   async function handleSubmit(event: FormEvent) {
@@ -22,7 +22,7 @@ function RoomsPage() {
       setRooms(await getRooms())
       setName('')
     } catch {
-      setError('Could not add the room.')
+      setError('לא הצלחנו להוסיף את החדר.')
     } finally {
       setSaving(false)
     }
@@ -30,17 +30,18 @@ function RoomsPage() {
 
   return (
     <>
-      <h1>Rooms</h1>
+      <h1>חדרים</h1>
       {error && <p role="alert">{error}</p>}
-      {rooms?.length === 0 && <p>No rooms yet. Add your first one below.</p>}
+      {rooms?.length === 0 && <p>עדיין אין חדרים. הוסיפו את הראשון למטה.</p>}
       <ul className="rooms">
         {rooms?.map((room) => (
           <li key={room.id}>
             <a href={`#/rooms/${room.id}`}>
               <span>{room.name}</span>
               <span className="muted">
-                {room.plant_count}{' '}
-                {room.plant_count === 1 ? 'plant' : 'plants'}
+                {room.plant_count === 1
+                  ? 'צמח אחד'
+                  : `${room.plant_count} צמחים`}
               </span>
             </a>
           </li>
@@ -48,13 +49,13 @@ function RoomsPage() {
       </ul>
       <form className="inline-form" onSubmit={handleSubmit}>
         <input
-          aria-label="Room name"
-          placeholder="Living room"
+          aria-label="שם החדר"
+          placeholder="סלון"
           value={name}
           onChange={(event) => setName(event.target.value)}
         />
         <button type="submit" disabled={saving || !name.trim()}>
-          Add room
+          הוספת חדר
         </button>
       </form>
     </>
