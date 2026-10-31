@@ -32,6 +32,6 @@
   "triggers": {
     // Cron runs in UTC. 06:00 UTC is 08:00/09:00 in Asia/Jerusalem.
     // Keep in sync with the switch in worker/index.ts.
-    "crons": ["0 6 * * *", "0 7 * * 0"]
+    "crons": ["0 6 * * *", "0 7 * * SUN"]
   }
 }

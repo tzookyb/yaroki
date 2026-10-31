@@ -1,7 +1,7 @@
 import { isSignedIn, signIn } from './auth'
 
 const DAILY_WATERING_CHECK = '0 6 * * *'
-const WEEKLY_AI_CARE_CHECK = '0 7 * * 0'
+const WEEKLY_AI_CARE_CHECK = '0 7 * * SUN'
 
 // Photos are resized to ~1024px WebP on the client, so these are only safety limits.
 // Together they keep R2 under its free 10 GB, even if every photo is the largest allowed.
