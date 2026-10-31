@@ -3,8 +3,10 @@ import { isSignedIn, signIn } from './auth'
 const DAILY_WATERING_CHECK = '0 6 * * *'
 const WEEKLY_AI_CARE_CHECK = '0 7 * * 0'
 
-// Photos are resized to ~1024px WebP on the client, so this is only a sanity limit.
-const MAX_PHOTO_BYTES = 5 * 1024 * 1024
+// Photos are resized to ~1024px WebP on the client, so these are only safety limits.
+// Together they keep R2 under its free 10 GB, even if every photo is the largest allowed.
+const MAX_PHOTO_BYTES = 2 * 1024 * 1024
+const MAX_PLANTS = 5000
 
 export default {
   async fetch(request, env) {
@@ -88,6 +90,12 @@ export default {
         .first()
       if (!room) {
         return Response.json({ error: 'Room not found' }, { status: 404 })
+      }
+      const plantCount = await env.DB.prepare(
+        'SELECT COUNT(*) AS count FROM plants',
+      ).first<number>('count')
+      if ((plantCount ?? 0) >= MAX_PLANTS) {
+        return Response.json({ error: 'Storage limit reached' }, { status: 507 })
       }
       const photo = await request.arrayBuffer()
       if (photo.byteLength === 0 || photo.byteLength > MAX_PHOTO_BYTES) {
