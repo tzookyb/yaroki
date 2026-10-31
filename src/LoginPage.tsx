@@ -14,26 +14,26 @@ function LoginPage({ onSignIn }: { onSignIn: () => void }) {
       await signIn(password)
       onSignIn()
     } catch {
-      setError('Could not sign in. Check the password and try again.')
+      setError('לא הצלחנו להתחבר. בדקו את הסיסמה ונסו שוב.')
       setSaving(false)
     }
   }
 
   return (
     <>
-      <h1>Plants Tracker</h1>
+      <h1>מעקב צמחים</h1>
       {error && <p role="alert">{error}</p>}
       <form className="inline-form" onSubmit={handleSubmit}>
         <input
-          aria-label="Password"
+          aria-label="סיסמה"
           type="password"
           autoComplete="current-password"
-          placeholder="Password"
+          placeholder="סיסמה"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
         />
         <button type="submit" disabled={saving || !password}>
-          Sign in
+          כניסה
         </button>
       </form>
     </>
