@@ -9,6 +9,7 @@ export type Plant = {
   room_id: number | null
   name: string | null
   photo_key: string | null
+  english_name: string | null
   species: string | null
   category: string | null
   light_needs: string | null

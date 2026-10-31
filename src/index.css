@@ -146,6 +146,10 @@ button.secondary {
   display: block;
 }
 
+.plant-info .english-name {
+  font-size: 0.75rem;
+}
+
 .plant-info button {
   margin-top: 0.25rem;
   padding: 0.3rem 0.75rem;

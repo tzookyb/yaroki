@@ -19,7 +19,7 @@ One npm package. `@cloudflare/vite-plugin` runs the frontend and the Worker toge
 
 Built: password sign-in, rooms (add, rename, delete), plants (add from a photo, delete), and AI species ID on add.
 
-The UI is Hebrew and right-to-left. Hebrew text lives directly in the components, there is no i18n layer. Gemini returns the plant's name in Hebrew and the species in Latin. `category` and `light_needs` are stored as English enum values, and `src/RoomPage.tsx` holds their Hebrew labels.
+The UI is Hebrew and right-to-left. Hebrew text lives directly in the components, there is no i18n layer. Gemini returns the plant's name in Hebrew, a smaller English name, and the species in Latin. `category` and `light_needs` are stored as English enum values, and `src/RoomPage.tsx` holds their Hebrew labels.
 
 Planned:
 

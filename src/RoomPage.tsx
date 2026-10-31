@@ -213,6 +213,11 @@ function RoomPage({ id }: { id: string }) {
                       {plant.name ? (
                         <>
                           <strong>{plant.name}</strong>
+                          {plant.english_name && (
+                            <span className="muted english-name">
+                              <bdi>{plant.english_name}</bdi>
+                            </span>
+                          )}
                           {plant.species && (
                             <span className="muted">
                               <bdi>{plant.species}</bdi>

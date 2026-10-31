@@ -19,7 +19,7 @@ const MIN_WATER_EVERY_DAYS = 1
 const MAX_WATER_EVERY_DAYS = 60
 
 const PROMPT = `Identify the house plant in this photo.
-Give species as the Latin botanical name, and common_name as the name used in Hebrew, written in Hebrew letters.
+Give species as the Latin botanical name, common_name as the name used in Hebrew, written in Hebrew letters, and english_name as the common name in English.
 water_every_days is how often to water it indoors, in days, for a typical home in Israel.
 If the photo does not show a plant, set is_plant to false.`
 
@@ -29,6 +29,7 @@ const RESPONSE_SCHEMA = {
     is_plant: { type: 'BOOLEAN' },
     species: { type: 'STRING' },
     common_name: { type: 'STRING' },
+    english_name: { type: 'STRING' },
     category: { type: 'STRING', enum: CATEGORIES },
     light_needs: { type: 'STRING', enum: LIGHT_NEEDS },
     water_every_days: {
@@ -41,6 +42,7 @@ const RESPONSE_SCHEMA = {
     'is_plant',
     'species',
     'common_name',
+    'english_name',
     'category',
     'light_needs',
     'water_every_days',
@@ -50,6 +52,7 @@ const RESPONSE_SCHEMA = {
 export type Identification = {
   species: string
   common_name: string
+  english_name: string | null
   category: string
   light_needs: string
   water_every_days: number
@@ -106,6 +109,7 @@ export async function identifyPlant(
   return {
     species,
     common_name: commonName,
+    english_name: cleanText(answer.english_name) || null,
     category: oneOf(CATEGORIES, answer.category) ?? 'other',
     light_needs: oneOf(LIGHT_NEEDS, answer.light_needs) ?? 'medium',
     water_every_days: cleanWaterEveryDays(answer.water_every_days),
