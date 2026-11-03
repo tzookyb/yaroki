@@ -106,7 +106,16 @@ function NextTasks() {
 
   return (
     <section className="next-tasks">
-      <h2>המשימות הבאות</h2>
+      <div className="next-tasks-header">
+        <h2>המשימות הבאות</h2>
+        <button
+          type="button"
+          className="link-button"
+          onClick={() => setShowAll((current) => !current)}
+        >
+          {showAll ? 'רק היום ומחר' : 'כל המשימות העתידיות'}
+        </button>
+      </div>
       {error && <p role="alert">{error}</p>}
       {list?.tasks.length === 0 && (
         <p className="muted">
@@ -173,13 +182,6 @@ function NextTasks() {
               </ul>
             </div>
           ))}
-      <button
-        type="button"
-        className="secondary show-all"
-        onClick={() => setShowAll((current) => !current)}
-      >
-        {showAll ? 'רק היום ומחר' : 'כל המשימות העתידיות'}
-      </button>
     </section>
   )
 }
