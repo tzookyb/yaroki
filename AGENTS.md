@@ -43,7 +43,7 @@ npm run cf-typegen         # after changing wrangler.jsonc
 
 On Idan's Mac, Node comes from fnm and is missing from non-interactive shells. Prefix commands with `export PATH="$HOME/.local/share/fnm/node-versions/v26.13.0/installation/bin:$PATH"`.
 
-In `npm run dev` the tab title starts with "local ·" and a red "local" badge shows (`src/main.tsx`). Prod builds have neither.
+In `npm run dev` the favicon is yellow instead of green (`src/main.tsx`). Prod builds keep the green one.
 
 The phone can't reach the Mac over home Wi-Fi, so phone testing goes through the deployed URL.
 
