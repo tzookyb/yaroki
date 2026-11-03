@@ -39,7 +39,7 @@ Tasks are computed from plant fields in `worker/tasks.ts`, not stored. A new tas
 npm run dev                # local frontend + Worker, D1 and R2 stored in .wrangler/
 npm run check              # format:check + lint + build, the same checks CI runs
 npm run format             # Prettier writes; oxlint warnings fail the lint
-npm run deploy             # manual, pushing to GitHub does not deploy
+npm run deploy             # CI runs this on merge to main; by hand only in an emergency
 npm run db:migrate:local
 npm run db:migrate:remote
 npm run cf-typegen         # after changing wrangler.jsonc
@@ -77,7 +77,7 @@ In `npm run dev` the favicon is yellow instead of green (`src/main.tsx`). Prod b
 - Cron strings in `wrangler.jsonc` must match the constants in `worker/index.ts` exactly.
 - Cloudflare rejects `0` as a day of the week. Use `SUN`.
 - Never rebuild `plants` with `DROP TABLE` in a migration: it cascades and deletes `events`. Use column swaps, as in `migrations/0002_rooms.sql`.
-- Migrations don't run on deploy. Run `db:migrate:remote` yourself, before deploying code that needs the new schema.
+- CI applies migrations right before each deploy (`.github/workflows/ci.yml`), so a migration must work with the code that is live until the deploy finishes: add columns and tables first, remove them in a later change.
 - Adding a plant and identifying it are two requests (`POST /api/rooms/:id/plants`, then `POST /api/plants/:id/identify`), so a Gemini failure never loses the photo and the UI can offer a retry.
 - Base64-encoding a photo for Gemini must use the native `Uint8Array.toBase64()`. A JS loop took about 5 ms for a typical photo and 45 ms at `MAX_PHOTO_BYTES`, over the CPU limit.
 - Deleting a plant or room removes its R2 photos first, so a failed delete can be retried without orphaning anything. `plants.room_id` is `ON DELETE SET NULL`, so deleting a room must delete its plants explicitly.

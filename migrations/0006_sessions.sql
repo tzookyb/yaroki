@@ -1,10 +1,7 @@
--- The login lockout let anyone lock the owner out with wrong passwords, so it is gone.
--- Login is now guarded by a per-IP rate limit and a long password.
-DROP TABLE login_failures;
-DROP TABLE login_lockout;
-
 -- One row per signed-in device. Only a SHA-256 hash of the token is stored,
 -- so a copy of the database can't be used to sign in.
+-- The old login_failures and login_lockout tables are now unused. They are dropped in a
+-- later migration, because the code live during this migration still reads them.
 CREATE TABLE sessions (
   token_hash TEXT PRIMARY KEY,
   user_agent TEXT,
