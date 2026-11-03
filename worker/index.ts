@@ -1,3 +1,4 @@
+import { secureHeaders } from 'hono/secure-headers'
 import { createApp } from './app'
 import { photoRoutes } from './routes/photos'
 import { plantRoutes } from './routes/plants'
@@ -19,6 +20,15 @@ const api = createApp()
   .route('/photos', photoRoutes)
 
 const app = createApp()
+  // JSON and photos never need to run scripts or be framed.
+  .use(
+    secureHeaders({
+      contentSecurityPolicy: {
+        defaultSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+      },
+    }),
+  )
   .route('/api', api)
   .notFound((c) => c.json({ error: 'Not found' }, 404))
   .onError((error, c) => {

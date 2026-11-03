@@ -80,4 +80,5 @@ In `npm run dev` the favicon is yellow instead of green (`src/main.tsx`). Prod b
 - Adding a plant and identifying it are two requests (`POST /api/rooms/:id/plants`, then `POST /api/plants/:id/identify`), so a Gemini failure never loses the photo and the UI can offer a retry.
 - Base64-encoding a photo for Gemini must use the native `Uint8Array.toBase64()`. A JS loop took about 5 ms for a typical photo and 45 ms at `MAX_PHOTO_BYTES`, over the CPU limit.
 - Deleting a plant or room removes its R2 photos first, so a failed delete can be retried without orphaning anything. `plants.room_id` is `ON DELETE SET NULL`, so deleting a room must delete its plants explicitly.
+- Security headers: the static app's come from `public/_headers` (Content-Security-Policy included), API responses get Hono's `secureHeaders` in `worker/index.ts`. A new outside domain the app calls must be added to `connect-src` there. `npm run dev` doesn't apply `_headers`, `vite preview` does.
 - Photos must reach the API as `image/webp`. `src/photo.ts` resizes to 1024px on the client. Photo keys are immutable and cached for a year, so a replaced photo needs a new key.
