@@ -195,3 +195,16 @@ button.secondary {
   margin-top: 0.25rem;
   padding: 0.3rem 0.75rem;
 }
+
+.dev-badge {
+  position: fixed;
+  bottom: 8px;
+  left: 8px;
+  z-index: 1000;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #c62828;
+  color: #fff;
+  font: 600 12px/1.4 system-ui, sans-serif;
+  pointer-events: none;
+}
