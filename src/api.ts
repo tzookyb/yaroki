@@ -39,7 +39,9 @@ export type RoomDetails = Omit<Room, 'plant_count'> & {
 
 async function send(url: string, init?: RequestInit) {
   const response = await fetch(url, init)
-  if (!response.ok) throw new Error(`HTTP ${response.status}`)
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`)
+  }
   return response
 }
 

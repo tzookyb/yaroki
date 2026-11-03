@@ -77,7 +77,9 @@ function RoomPage({ id }: { id: string }) {
     const file = event.target.files?.[0]
     // Clear it so that picking the same photo again still fires a change.
     event.target.value = ''
-    if (!file) return
+    if (!file) {
+      return
+    }
 
     setChoosingPhoto(false)
     setAdding(true)
@@ -100,7 +102,9 @@ function RoomPage({ id }: { id: string }) {
 
   async function handleDeletePlant(plant: Plant) {
     const message = `למחוק את ${plant.name ?? 'הצמח הזה'}? גם התמונה תימחק, ואי אפשר לבטל את הפעולה.`
-    if (!window.confirm(message)) return
+    if (!window.confirm(message)) {
+      return
+    }
 
     setError(null)
     try {

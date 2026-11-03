@@ -37,9 +37,13 @@ type TaskType = {
 const TASK_TYPES: Record<string, TaskType> = {
   water: {
     dueDate(plant, today) {
-      if (!plant.water_every_days) return null
+      if (!plant.water_every_days) {
+        return null
+      }
       // A plant never marked as watered is due today, and its schedule starts once it is.
-      if (!plant.last_watered) return today
+      if (!plant.last_watered) {
+        return today
+      }
       return addDays(plant.last_watered, plant.water_every_days)
     },
     doneToday(plant, today) {
@@ -117,9 +121,13 @@ export async function getTasks(db: D1Database, all: boolean) {
   for (const plant of plants) {
     for (const [type, taskType] of Object.entries(TASK_TYPES)) {
       const dueDate = taskType.dueDate(plant, today)
-      if (!dueDate) continue
+      if (!dueDate) {
+        continue
+      }
       const doneToday = taskType.doneToday(plant, today)
-      if (!all && !doneToday && dueDate > tomorrow) continue
+      if (!all && !doneToday && dueDate > tomorrow) {
+        continue
+      }
       tasks.push({
         type,
         plant_id: plant.id,
@@ -150,12 +158,16 @@ export async function setTaskDone(
   done: boolean,
 ) {
   const taskType = Object.hasOwn(TASK_TYPES, type) ? TASK_TYPES[type] : null
-  if (!taskType) return false
+  if (!taskType) {
+    return false
+  }
   const plant = await db
     .prepare('SELECT * FROM plants WHERE id = ?')
     .bind(plantId)
     .first<TaskPlant>()
-  if (!plant) return false
+  if (!plant) {
+    return false
+  }
   const today = todayInJerusalem()
   if (done) {
     if (!taskType.doneToday(plant, today)) {
@@ -163,7 +175,9 @@ export async function setTaskDone(
     }
   } else {
     // Only today's completion can be undone, so an old one is never lost by mistake.
-    if (!taskType.doneToday(plant, today)) return false
+    if (!taskType.doneToday(plant, today)) {
+      return false
+    }
     await taskType.undo(db, plantId, today)
   }
   return true
