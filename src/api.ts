@@ -23,11 +23,12 @@ export type Task = {
   photo_key: string | null
   room_id: number | null
   room_name: string | null
-  // YYYY-MM-DD in Asia/Jerusalem.
+  // YYYY-MM-DD in Asia/Jerusalem. For a task done today, this is the next due date.
   due_date: string
+  done_today: boolean
 }
 
-export type UpcomingTasks = {
+export type TaskList = {
   today: string
   tasks: Task[]
 }
@@ -116,13 +117,13 @@ export function deletePlant(id: number) {
   return send(`/api/plants/${id}`, { method: 'DELETE' })
 }
 
-export function getUpcomingTasks() {
-  return request<UpcomingTasks>('/api/tasks')
+export function getTasks(all: boolean) {
+  return request<TaskList>(all ? '/api/tasks?all' : '/api/tasks')
 }
 
-export function completeTask(task: Task) {
+export function setTaskDone(task: Task, done: boolean) {
   return send(`/api/plants/${task.plant_id}/tasks/${task.type}/done`, {
-    method: 'POST',
+    method: done ? 'POST' : 'DELETE',
   })
 }
 

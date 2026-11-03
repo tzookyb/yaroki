@@ -30,7 +30,7 @@ Planned:
 
 The cron handlers in `worker/index.ts` are stubs. The `push_subscriptions` table and the `care_notes` column exist but nothing uses them yet.
 
-Tasks are computed from plant fields in `worker/tasks.ts`, not stored. A new task type goes in `TASK_TYPES` there, with its Hebrew labels in `src/NextTasks.tsx`. `plants.last_watered` is a `YYYY-MM-DD` date in Asia/Jerusalem, and a plant never marked as watered is due today. Marking a task done also logs a row in `events`.
+Tasks are computed from plant fields in `worker/tasks.ts`, not stored. A new task type goes in `TASK_TYPES` there, with its Hebrew labels in `src/NextTasks.tsx`. `plants.last_watered` is a `YYYY-MM-DD` date in Asia/Jerusalem, and a plant never marked as watered is due today. Marking a task done also logs a row in `events`. A task done today stays in the list, grayed, and can be undone that day only: undo deletes today's events and sets `last_watered` back to the latest earlier event.
 
 ## Commands
 
