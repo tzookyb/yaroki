@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getRooms, type Room } from './api'
 import { ROOMS_CHANGED } from './ManageRooms'
+import NextTasks from './NextTasks'
 
 function RoomsPage() {
   const [rooms, setRooms] = useState<Room[] | null>(null)
@@ -19,6 +20,7 @@ function RoomsPage() {
 
   return (
     <>
+      <NextTasks />
       <h1>חדרים</h1>
       {error && <p role="alert">{error}</p>}
       {rooms?.length === 0 && (

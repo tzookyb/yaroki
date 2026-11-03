@@ -16,6 +16,22 @@ export type Plant = {
   water_every_days: number | null
 }
 
+export type Task = {
+  type: string
+  plant_id: number
+  plant_name: string | null
+  photo_key: string | null
+  room_id: number | null
+  room_name: string | null
+  // YYYY-MM-DD in Asia/Jerusalem.
+  due_date: string
+}
+
+export type UpcomingTasks = {
+  today: string
+  tasks: Task[]
+}
+
 export type RoomDetails = Omit<Room, 'plant_count'> & {
   plants: Plant[]
 }
@@ -98,6 +114,16 @@ export function identifyPlant(id: number) {
 
 export function deletePlant(id: number) {
   return send(`/api/plants/${id}`, { method: 'DELETE' })
+}
+
+export function getUpcomingTasks() {
+  return request<UpcomingTasks>('/api/tasks')
+}
+
+export function completeTask(task: Task) {
+  return send(`/api/plants/${task.plant_id}/tasks/${task.type}/done`, {
+    method: 'POST',
+  })
 }
 
 export function photoUrl(photoKey: string) {

@@ -1,5 +1,6 @@
 import { isSignedIn, signIn, signOut } from './auth'
 import { identifyPlant } from './gemini'
+import { completeTask, getUpcomingTasks } from './tasks'
 
 const DAILY_WATERING_CHECK = '0 6 * * *'
 const WEEKLY_AI_CARE_CHECK = '0 7 * * SUN'
@@ -46,6 +47,19 @@ export default {
         'SELECT * FROM plants ORDER BY created_at DESC',
       ).all()
       return Response.json(results)
+    }
+
+    if (request.method === 'GET' && pathname === '/api/tasks') {
+      return Response.json(await getUpcomingTasks(env.DB))
+    }
+
+    const doneTask = pathname.match(/^\/api\/plants\/(\d+)\/tasks\/(\w+)\/done$/)
+    if (request.method === 'POST' && doneTask) {
+      const [, donePlantId, type] = doneTask
+      if (!(await completeTask(env.DB, type, Number(donePlantId)))) {
+        return Response.json({ error: 'Task not found' }, { status: 404 })
+      }
+      return new Response(null, { status: 204 })
     }
 
     if (request.method === 'GET' && pathname === '/api/rooms') {

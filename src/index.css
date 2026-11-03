@@ -271,3 +271,56 @@ button.secondary {
   margin-top: 0.25rem;
   padding: 0.3rem 0.75rem;
 }
+
+.next-tasks h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+}
+
+.next-tasks li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+}
+
+.next-tasks li + li {
+  border-top: 1px solid #8884;
+}
+
+.next-tasks img {
+  width: 3rem;
+  height: 3rem;
+  object-fit: cover;
+  border-radius: 0.5rem;
+}
+
+.task-info {
+  flex: 1;
+  min-width: 0;
+  text-decoration: none;
+}
+
+.task-info strong,
+.task-info span {
+  display: block;
+}
+
+.task-info span {
+  font-size: 0.875rem;
+}
+
+.next-tasks .overdue {
+  color: #b3401e;
+}
+
+.next-tasks button {
+  padding: 0.4rem 0.75rem;
+  white-space: nowrap;
+}
+
+@media (prefers-color-scheme: dark) {
+  .next-tasks .overdue {
+    color: #f0906e;
+  }
+}
