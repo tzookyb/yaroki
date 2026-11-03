@@ -30,3 +30,6 @@ dist-ssr
 
 # Claude Code
 .claude/settings.local.json
+
+# Machine-specific agent notes
+CLAUDE.local.md
