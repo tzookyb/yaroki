@@ -308,10 +308,30 @@ button.secondary {
   filter: grayscale(1);
 }
 
-.next-tasks .show-all {
-  margin-top: 0.75rem;
-  padding: 0.3rem 0.75rem;
-  font-size: 0.875rem;
+.next-tasks-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.next-tasks-header h2 {
+  margin: 0;
+}
+
+.next-tasks .link-button {
+  padding: 0;
+  background: none;
+  color: #2f6b3f;
+  font-size: 0.8125rem;
+  text-decoration: underline;
+}
+
+@media (prefers-color-scheme: dark) {
+  .next-tasks .link-button {
+    color: #8fc79c;
+  }
 }
 
 .next-tasks li {
