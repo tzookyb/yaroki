@@ -1,6 +1,8 @@
-# Plants Tracker
+# Yaroki
 
-Personal PWA for tracking the plants in one home: single user, Android phone, target cost $0. Live at https://plants-tracker.plants-tracker.workers.dev.
+Personal PWA for tracking the plants in one home: single user, Android phone, target cost $0. Live at https://yaroki.plants-tracker.workers.dev.
+
+The app was called plants-tracker before. The D1 database (`plants-tracker`) and R2 bucket (`plants-tracker-photos`) keep that name, because they can't be renamed in place.
 
 Setup and first-deploy steps are in `README.md`. This file holds only what an agent can't quickly learn from the code.
 
