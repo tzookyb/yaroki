@@ -1,4 +1,4 @@
-import { isSignedIn, signIn, signOut } from './auth'
+import { isSignedIn, signIn, signOut, signOutResponse } from './auth'
 import { identifyPlant } from './gemini'
 import { getTasks, setTaskDone } from './tasks'
 
@@ -30,7 +30,11 @@ export default {
     }
 
     // Every route below this line needs a session.
-    if (!(await isSignedIn(request, env))) {
+    const session = await isSignedIn(request, env)
+    if (session === 'locked') {
+      return signOutResponse()
+    }
+    if (!session) {
       return Response.json({ error: 'Not signed in' }, { status: 401 })
     }
 

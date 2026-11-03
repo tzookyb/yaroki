@@ -37,10 +37,19 @@ export type RoomDetails = Omit<Room, 'plant_count'> & {
   plants: Plant[]
 }
 
+export class HttpError extends Error {
+  status: number
+
+  constructor(status: number) {
+    super(`HTTP ${status}`)
+    this.status = status
+  }
+}
+
 async function send(url: string, init?: RequestInit) {
   const response = await fetch(url, init)
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`)
+    throw new HttpError(response.status)
   }
   return response
 }

@@ -1,5 +1,16 @@
 import { useState, type FormEvent } from 'react'
-import { signIn } from './api'
+import { HttpError, signIn } from './api'
+
+const ERROR_TEXT_BY_STATUS: Record<number, string> = {
+  423: 'Login blocked',
+  429: 'יותר מדי ניסיונות כניסה. נסו שוב מאוחר יותר.',
+  503: 'הסיסמה בשרת קצרה מדי. צריך סיסמה של 20 תווים לפחות.',
+}
+
+function errorText(error: unknown) {
+  const status = error instanceof HttpError ? error.status : 0
+  return ERROR_TEXT_BY_STATUS[status] ?? 'לא הצלחנו להתחבר. בדקו את הסיסמה ונסו שוב.'
+}
 
 function LoginPage({ onSignIn }: { onSignIn: () => void }) {
   const [password, setPassword] = useState('')
@@ -13,15 +24,15 @@ function LoginPage({ onSignIn }: { onSignIn: () => void }) {
     try {
       await signIn(password)
       onSignIn()
-    } catch {
-      setError('לא הצלחנו להתחבר. בדקו את הסיסמה ונסו שוב.')
+    } catch (error) {
+      setError(errorText(error))
       setSaving(false)
     }
   }
 
   return (
     <>
-      <h1>מעקב צמחים</h1>
+      <h1>Yaroki</h1>
       {error && <p role="alert">{error}</p>}
       <form className="inline-form" onSubmit={handleSubmit}>
         <input

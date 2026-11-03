@@ -37,8 +37,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'מעקב צמחים',
-        short_name: 'צמחים',
+        name: 'Yaroki',
+        short_name: 'Yaroki',
         description: 'מעקב אחר הצמחים בבית',
         lang: 'he',
         dir: 'rtl',
