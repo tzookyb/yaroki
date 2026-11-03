@@ -1,20 +1,10 @@
+import type { Task, TaskList } from '../shared/api'
+
 // Care tasks are computed from plant fields, not stored. A new task type adds an entry to TASK_TYPES.
 // Each plant has at most one task of each type.
 
 const TIME_ZONE = 'Asia/Jerusalem'
 const DAY_MS = 24 * 60 * 60 * 1000
-
-export type Task = {
-  type: string
-  plant_id: number
-  plant_name: string | null
-  photo_key: string | null
-  room_id: number | null
-  room_name: string | null
-  // YYYY-MM-DD in Asia/Jerusalem. For a task done today, this is the next due date.
-  due_date: string
-  done_today: boolean
-}
 
 type TaskPlant = {
   id: number
@@ -105,7 +95,10 @@ function addDays(date: string, days: number) {
 }
 
 // Open tasks most urgent first, then tasks done today. Without `all`, only open tasks due by tomorrow.
-export async function getTasks(db: D1Database, all: boolean) {
+export async function getTasks(
+  db: D1Database,
+  all: boolean,
+): Promise<TaskList> {
   const today = todayInJerusalem()
   const tomorrow = addDays(today, 1)
   const { results: plants } = await db

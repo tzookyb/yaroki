@@ -11,7 +11,8 @@ Setup and first-deploy steps are in `README.md`. This file holds only what an ag
 One npm package. `@cloudflare/vite-plugin` runs the frontend and the Worker together from `npm run dev`.
 
 - `src/`: React + TypeScript frontend, vite-plugin-pwa
-- `worker/`: Cloudflare Worker, serves the API (`/api/*`) and the built frontend. No Node server.
+- `worker/`: Cloudflare Worker, serves the API (`/api/*`) and the built frontend. No Node server. Routes use Hono (`worker/routes/`), request bodies and params are checked with zod (`worker/schemas.ts`).
+- `shared/`: API types and limits used by both the Worker and the app, such as `Task` and the room name length.
 - `migrations/`: D1 (SQLite) schema
 - Photos are in R2. D1 stores only `photo_key`.
 
@@ -54,7 +55,7 @@ In `npm run dev` the favicon is yellow instead of green (`src/main.tsx`). Prod b
 ## Secrets and auth
 
 - Never commit a secret to any file. Production uses `npx wrangler secret put <NAME>`, local dev uses the git-ignored `.dev.vars`. `.dev.vars.example` lists the names with empty values.
-- `APP_PASSWORD` gates every API route except `/api/health` and `/api/login`. New routes go below the sign-in check in `worker/index.ts`.
+- `APP_PASSWORD` gates every API route except `/api/health` and `/api/login`. New routes are mounted after `requireSession` in `worker/index.ts`, which is what makes them need a session.
 - Login refuses to work if `APP_PASSWORD` is under 20 characters (503). Signed-in devices keep working. `npm run dev` skips this check.
 - Login is guarded by the Cloudflare rate limit (10/min per IP, per location) and the 20-character rule. There is no lockout on purpose: a lockout lets anyone lock the owner out.
 - Each sign-in creates a random token. The cookie holds it, and the `sessions` table holds only its SHA-256 hash, valid for 365 days. Sign-out deletes this device's row, "sign out everywhere" (`/api/logout-all`) deletes all rows. Changing `APP_PASSWORD` does not sign anyone out. A missing `APP_PASSWORD` locks the API, even for signed-in devices.
@@ -64,7 +65,7 @@ In `npm run dev` the favicon is yellow instead of green (`src/main.tsx`). Prod b
 
 - Workers: 10 ms CPU per request or cron run (I/O wait doesn't count), 100k requests/day. Push encryption may exceed the CPU limit, which would need Workers Paid ($5/mo). Don't move to anything paid without asking the owner.
 - D1: 100k row writes and 5M reads per day.
-- R2: free 10 GB. `MAX_PHOTO_BYTES` × `MAX_PLANTS` in `worker/index.ts` is what keeps it under that, so raising either breaks the guarantee.
+- R2: free 10 GB. `MAX_PHOTO_BYTES` × `MAX_PLANTS` in `worker/limits.ts` is what keeps it under that, so raising either breaks the guarantee.
 - Cron Triggers: 5 per Cloudflare account.
 
 - Gemini: the model is `gemini-3.5-flash-lite`, because `gemini-3.8-flash` took over 25 s on a plant photo. The free tier is used in `worker/gemini.ts`, and Google may use free-tier prompts, photos included, to improve its products. Current free-tier quotas are shown in AI Studio, not in the docs.
