@@ -48,7 +48,7 @@ export async function isSignedIn(request: Request, env: Env) {
 // Vite sets DEV only under `npm run dev`, so local dev can use any password.
 const MIN_PASSWORD_LENGTH = import.meta.env.DEV ? 1 : 20
 // After this many failed logins in one UTC day, every login is refused until the next day.
-// Two such days in a row lock login until it is unlocked from a signed-in device.
+// Two such days in a row lock login until the lockout row is deleted from the Cloudflare dashboard.
 const DAILY_FAILURE_CAP = 50
 
 function utcDay(offsetDays = 0) {
@@ -72,13 +72,6 @@ export async function getLoginGuard(env: Env) {
     blockedToday: failedToday >= DAILY_FAILURE_CAP,
     blockedYesterday: failedYesterday >= DAILY_FAILURE_CAP,
   }
-}
-
-export async function unlockLogin(env: Env) {
-  await env.DB.batch([
-    env.DB.prepare('DELETE FROM login_lockout'),
-    env.DB.prepare('DELETE FROM login_failures'),
-  ])
 }
 
 async function recordFailure(env: Env, blockedYesterday: boolean) {
