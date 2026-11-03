@@ -6,17 +6,25 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "oxlint",
+    "lint": "oxlint --deny-warnings",
     "preview": "npm run build && vite preview",
     "deploy": "npm run build && wrangler deploy",
     "cf-typegen": "wrangler types",
     "db:migrate:local": "wrangler d1 migrations apply plants-tracker --local",
     "db:migrate:remote": "wrangler d1 migrations apply plants-tracker --remote",
-    "db:pull-prod": "node scripts/pull-prod.mjs"
+    "db:pull-prod": "node scripts/pull-prod.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "npm run format:check && npm run lint && npm run build"
   },
   "dependencies": {
+    "@hono/zod-validator": "^0.9.1",
+    "@sentry/cloudflare": "^11.10.0",
+    "@sentry/react": "^11.10.0",
+    "hono": "^4.13.16",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.66.0",
@@ -25,6 +33,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
     "oxlint": "^1.89.0",
+    "prettier": "^3.9.10",
     "typescript": "~7.0.2",
     "vite": "^8.3.5",
     "vite-plugin-pwa": "^2.0.0",

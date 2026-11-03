@@ -27,7 +27,15 @@ for (const [flag, file] of [
   ['--no-data', 'schema.sql'],
   ['--no-schema', 'data.sql'],
 ]) {
-  await wrangler('d1', 'export', DB, '--remote', flag, '--output', `${DIR}/${file}`)
+  await wrangler(
+    'd1',
+    'export',
+    DB,
+    '--remote',
+    flag,
+    '--output',
+    `${DIR}/${file}`,
+  )
 }
 
 // The export recreates every table, so the local ones are dropped first.

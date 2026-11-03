@@ -1,11 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import {
-  createRoom,
-  deleteRoom,
-  getRooms,
-  renameRoom,
-  type Room,
-} from './api'
+import { ROOM_NAME_MAX_LENGTH } from '../shared/api'
+import { createRoom, deleteRoom, getRooms, renameRoom, type Room } from './api'
 
 // Lets the room list and room page refresh after a change made here.
 export const ROOMS_CHANGED = 'rooms-changed'
@@ -91,6 +86,7 @@ function ManageRooms() {
             {renaming?.id === room.id ? (
               <form className="inline-form" onSubmit={handleRename}>
                 <input
+                  maxLength={ROOM_NAME_MAX_LENGTH}
                   aria-label="שם החדר"
                   autoFocus
                   value={renaming.name}
@@ -133,6 +129,7 @@ function ManageRooms() {
       </ul>
       <form className="inline-form" onSubmit={handleSubmit}>
         <input
+          maxLength={ROOM_NAME_MAX_LENGTH}
           aria-label="שם החדר"
           placeholder="סלון"
           value={name}
