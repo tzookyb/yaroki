@@ -1,11 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import {
-  createRoom,
-  deleteRoom,
-  getRooms,
-  renameRoom,
-  type Room,
-} from './api'
+import { createRoom, deleteRoom, getRooms, renameRoom, type Room } from './api'
 
 // Lets the room list and room page refresh after a change made here.
 export const ROOMS_CHANGED = 'rooms-changed'

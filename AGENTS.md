@@ -36,7 +36,8 @@ Tasks are computed from plant fields in `worker/tasks.ts`, not stored. A new tas
 
 ```bash
 npm run dev                # local frontend + Worker, D1 and R2 stored in .wrangler/
-npm run build && npm run lint   # the only checks; there are no tests
+npm run check              # format:check + lint + build, the same checks CI runs
+npm run format             # Prettier writes; oxlint warnings fail the lint
 npm run deploy             # manual, pushing to GitHub does not deploy
 npm run db:migrate:local
 npm run db:migrate:remote

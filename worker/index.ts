@@ -59,8 +59,13 @@ export default {
     }
 
     // POST marks a task done, DELETE undoes today's completion.
-    const doneTask = pathname.match(/^\/api\/plants\/(\d+)\/tasks\/(\w+)\/done$/)
-    if ((request.method === 'POST' || request.method === 'DELETE') && doneTask) {
+    const doneTask = pathname.match(
+      /^\/api\/plants\/(\d+)\/tasks\/(\w+)\/done$/,
+    )
+    if (
+      (request.method === 'POST' || request.method === 'DELETE') &&
+      doneTask
+    ) {
       const [, donePlantId, type] = doneTask
       const done = request.method === 'POST'
       if (!(await setTaskDone(env.DB, type, Number(donePlantId), done))) {
@@ -162,7 +167,10 @@ export default {
         'SELECT COUNT(*) AS count FROM plants',
       ).first<number>('count')
       if ((plantCount ?? 0) >= MAX_PLANTS) {
-        return Response.json({ error: 'Storage limit reached' }, { status: 507 })
+        return Response.json(
+          { error: 'Storage limit reached' },
+          { status: 507 },
+        )
       }
       const photo = await request.arrayBuffer()
       if (photo.byteLength === 0 || photo.byteLength > MAX_PHOTO_BYTES) {
@@ -213,8 +221,7 @@ export default {
       )
         .bind(identifyPlantId)
         .first<{ photo_key: string | null }>()
-      const photo =
-        plant?.photo_key && (await env.PHOTOS.get(plant.photo_key))
+      const photo = plant?.photo_key && (await env.PHOTOS.get(plant.photo_key))
       if (!photo) {
         return Response.json({ error: 'Plant not found' }, { status: 404 })
       }

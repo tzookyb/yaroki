@@ -61,7 +61,9 @@ export async function isSignedIn(request: Request, env: Env) {
     return false
   }
   // A lockout signs out every device, on its next request.
-  const locked = await env.DB.prepare('SELECT 1 FROM login_lockout WHERE id = 1').first()
+  const locked = await env.DB.prepare(
+    'SELECT 1 FROM login_lockout WHERE id = 1',
+  ).first()
   return locked ? 'locked' : true
 }
 
@@ -86,7 +88,9 @@ const MIN_PASSWORD_LENGTH = import.meta.env.DEV ? 1 : 20
 const DAILY_FAILURE_CAP = 20
 
 function utcDay(offsetDays = 0) {
-  return new Date(Date.now() + offsetDays * 86_400_000).toISOString().slice(0, 10)
+  return new Date(Date.now() + offsetDays * 86_400_000)
+    .toISOString()
+    .slice(0, 10)
 }
 
 async function getLoginGuard(env: Env) {
@@ -97,7 +101,11 @@ async function getLoginGuard(env: Env) {
        (SELECT count FROM login_failures WHERE day = ?2) AS yesterday`,
   )
     .bind(utcDay(), utcDay(-1))
-    .first<{ locked_at: string | null; today: number | null; yesterday: number | null }>()
+    .first<{
+      locked_at: string | null
+      today: number | null
+      yesterday: number | null
+    }>()
   return {
     locked: Boolean(row?.locked_at),
     blockedToday: (row?.today ?? 0) >= DAILY_FAILURE_CAP,
@@ -116,7 +124,9 @@ async function recordFailure(env: Env, blockedYesterday: boolean) {
   ])
   const count = upsert.results[0]?.count ?? 0
   if (count >= DAILY_FAILURE_CAP && blockedYesterday) {
-    await env.DB.prepare('INSERT OR IGNORE INTO login_lockout (id) VALUES (1)').run()
+    await env.DB.prepare(
+      'INSERT OR IGNORE INTO login_lockout (id) VALUES (1)',
+    ).run()
   }
 }
 
@@ -127,7 +137,10 @@ export async function signIn(request: Request, env: Env) {
   }
 
   if (!env.APP_PASSWORD || env.APP_PASSWORD.length < MIN_PASSWORD_LENGTH) {
-    return Response.json({ error: 'Server password too short' }, { status: 503 })
+    return Response.json(
+      { error: 'Server password too short' },
+      { status: 503 },
+    )
   }
 
   // Checked before the password, so a blocked day refuses even the right password.

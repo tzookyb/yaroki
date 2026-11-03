@@ -9,7 +9,9 @@ const ERROR_TEXT_BY_STATUS: Record<number, string> = {
 
 function errorText(error: unknown) {
   const status = error instanceof HttpError ? error.status : 0
-  return ERROR_TEXT_BY_STATUS[status] ?? 'לא הצלחנו להתחבר. בדקו את הסיסמה ונסו שוב.'
+  return (
+    ERROR_TEXT_BY_STATUS[status] ?? 'לא הצלחנו להתחבר. בדקו את הסיסמה ונסו שוב.'
+  )
 }
 
 function LoginPage({ onSignIn }: { onSignIn: () => void }) {
