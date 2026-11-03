@@ -21,7 +21,9 @@ function App() {
       .catch(() => setSignedIn(false))
   }, [])
 
-  if (signedIn === null) return null
+  if (signedIn === null) {
+    return null
+  }
 
   return (
     <main>

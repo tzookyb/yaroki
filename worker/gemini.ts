@@ -103,14 +103,20 @@ export async function identifyPlant(
   const text = data.candidates?.[0]?.content?.parts
     ?.map((part) => part.text ?? '')
     .join('')
-  if (!text) throw new Error('Gemini returned no text')
+  if (!text) {
+    throw new Error('Gemini returned no text')
+  }
 
   const answer = JSON.parse(text)
-  if (answer.is_plant === false) return null
+  if (answer.is_plant === false) {
+    return null
+  }
 
   const species = cleanText(answer.species)
   const commonName = cleanText(answer.common_name)
-  if (!species || !commonName) throw new Error('Gemini returned no name')
+  if (!species || !commonName) {
+    throw new Error('Gemini returned no name')
+  }
   return {
     species,
     common_name: commonName,

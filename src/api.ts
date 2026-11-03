@@ -48,7 +48,9 @@ export class HttpError extends Error {
 
 async function send(url: string, init?: RequestInit) {
   const response = await fetch(url, init)
-  if (!response.ok) throw new HttpError(response.status)
+  if (!response.ok) {
+    throw new HttpError(response.status)
+  }
   return response
 }
 
