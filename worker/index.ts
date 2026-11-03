@@ -1,5 +1,6 @@
-import { isSignedIn, signIn, signOutResponse } from './auth'
+import { isSignedIn, signIn, signOut, signOutResponse } from './auth'
 import { identifyPlant } from './gemini'
+import { getTasks, setTaskDone } from './tasks'
 
 const DAILY_WATERING_CHECK = '0 6 * * *'
 const WEEKLY_AI_CARE_CHECK = '0 7 * * SUN'
@@ -39,11 +40,31 @@ export default {
       return Response.json({ ok: true })
     }
 
+    if (request.method === 'POST' && pathname === '/api/logout') {
+      return signOut()
+    }
+
     if (request.method === 'GET' && pathname === '/api/plants') {
       const { results } = await env.DB.prepare(
         'SELECT * FROM plants ORDER BY created_at DESC',
       ).all()
       return Response.json(results)
+    }
+
+    if (request.method === 'GET' && pathname === '/api/tasks') {
+      const all = new URL(request.url).searchParams.has('all')
+      return Response.json(await getTasks(env.DB, all))
+    }
+
+    // POST marks a task done, DELETE undoes today's completion.
+    const doneTask = pathname.match(/^\/api\/plants\/(\d+)\/tasks\/(\w+)\/done$/)
+    if ((request.method === 'POST' || request.method === 'DELETE') && doneTask) {
+      const [, donePlantId, type] = doneTask
+      const done = request.method === 'POST'
+      if (!(await setTaskDone(env.DB, type, Number(donePlantId), done))) {
+        return Response.json({ error: 'Task not found' }, { status: 404 })
+      }
+      return new Response(null, { status: 204 })
     }
 
     if (request.method === 'GET' && pathname === '/api/rooms') {

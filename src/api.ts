@@ -16,6 +16,23 @@ export type Plant = {
   water_every_days: number | null
 }
 
+export type Task = {
+  type: string
+  plant_id: number
+  plant_name: string | null
+  photo_key: string | null
+  room_id: number | null
+  room_name: string | null
+  // YYYY-MM-DD in Asia/Jerusalem. For a task done today, this is the next due date.
+  due_date: string
+  done_today: boolean
+}
+
+export type TaskList = {
+  today: string
+  tasks: Task[]
+}
+
 export type RoomDetails = Omit<Room, 'plant_count'> & {
   plants: Plant[]
 }
@@ -43,6 +60,18 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 export async function isSignedIn() {
   const response = await fetch('/api/session')
   return response.ok
+}
+
+export function signOut() {
+  return send('/api/logout', { method: 'POST' })
+}
+
+// Dev only: the route exists only in the Vite dev server, see vite.config.ts.
+export function pullProd() {
+  return send('/__dev/pull-prod', {
+    method: 'POST',
+    headers: { 'X-Dev-Action': '1' },
+  })
 }
 
 export function signIn(password: string) {
@@ -95,6 +124,16 @@ export function identifyPlant(id: number) {
 
 export function deletePlant(id: number) {
   return send(`/api/plants/${id}`, { method: 'DELETE' })
+}
+
+export function getTasks(all: boolean) {
+  return request<TaskList>(all ? '/api/tasks?all' : '/api/tasks')
+}
+
+export function setTaskDone(task: Task, done: boolean) {
+  return send(`/api/plants/${task.plant_id}/tasks/${task.type}/done`, {
+    method: done ? 'POST' : 'DELETE',
+  })
 }
 
 export function photoUrl(photoKey: string) {
