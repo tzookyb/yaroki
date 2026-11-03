@@ -1,4 +1,4 @@
-# Plants Tracker
+# Yaroki
 
 Personal PWA for tracking the plants in my home.
 

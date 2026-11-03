@@ -24,7 +24,7 @@ async function sessionToken(password: string) {
   const signature = await crypto.subtle.sign(
     'HMAC',
     key,
-    encoder.encode('plants-tracker-session'),
+    encoder.encode('yaroki-session'),
   )
   return Array.from(new Uint8Array(signature), (byte) =>
     byte.toString(16).padStart(2, '0'),
