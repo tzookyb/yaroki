@@ -36,6 +36,18 @@ export async function isSignedIn() {
   return response.ok
 }
 
+export function signOut() {
+  return send('/api/logout', { method: 'POST' })
+}
+
+// Dev only: the route exists only in the Vite dev server, see vite.config.ts.
+export function pullProd() {
+  return send('/__dev/pull-prod', {
+    method: 'POST',
+    headers: { 'X-Dev-Action': '1' },
+  })
+}
+
 export function signIn(password: string) {
   return request('/api/login', {
     method: 'POST',

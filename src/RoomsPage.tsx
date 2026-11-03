@@ -82,7 +82,7 @@ function RoomsPage() {
             setRenaming(null)
           }}
         >
-          ⚙&#xFE0E;
+          ✎&#xFE0E;
         </button>
       </div>
       {error && <p role="alert">{error}</p>}

@@ -17,7 +17,7 @@ One npm package. `@cloudflare/vite-plugin` runs the frontend and the Worker toge
 
 ## Status
 
-Built: password sign-in, rooms (add, rename, delete), plants (add from a photo, delete), and AI species ID on add.
+Built: password sign-in and sign-out (header cog), rooms (add, rename, delete), plants (add from a photo, delete), and AI species ID on add.
 
 The UI is Hebrew and right-to-left. Hebrew text lives directly in the components, there is no i18n layer. Gemini returns the plant's name in Hebrew, a smaller English name, and the species in Latin. `category` and `light_needs` are stored as English enum values, and `src/RoomPage.tsx` holds their Hebrew labels.
 
@@ -39,7 +39,10 @@ npm run deploy             # manual, pushing to GitHub does not deploy
 npm run db:migrate:local
 npm run db:migrate:remote
 npm run cf-typegen         # after changing wrangler.jsonc
+npm run db:pull-prod       # replace local D1 with prod, copy missing photos; reads prod only
 ```
+
+`db:pull-prod` also runs from the dev-only button in the header's settings menu. Its route lives in `vite.config.ts` with `apply: 'serve'`, so it never ships. Keep the script's `--remote` calls read-only (`d1 export`, `r2 object get`).
 
 On Idan's Mac, Node comes from fnm and is missing from non-interactive shells. Prefix commands with `export PATH="$HOME/.local/share/fnm/node-versions/v26.13.0/installation/bin:$PATH"`.
 
