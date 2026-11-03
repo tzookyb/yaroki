@@ -20,9 +20,24 @@ export type RoomDetails = Omit<Room, 'plant_count'> & {
   plants: Plant[]
 }
 
+export type LoginGuard = {
+  lockedAt: string | null
+  failedToday: number
+  blockedToday: boolean
+}
+
+export class HttpError extends Error {
+  status: number
+
+  constructor(status: number) {
+    super(`HTTP ${status}`)
+    this.status = status
+  }
+}
+
 async function send(url: string, init?: RequestInit) {
   const response = await fetch(url, init)
-  if (!response.ok) throw new Error(`HTTP ${response.status}`)
+  if (!response.ok) throw new HttpError(response.status)
   return response
 }
 
@@ -31,9 +46,16 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   return response.json()
 }
 
-export async function isSignedIn() {
+// Null when signed out.
+export async function getSession() {
   const response = await fetch('/api/session')
-  return response.ok
+  if (!response.ok) return null
+  const body: { login: LoginGuard } = await response.json()
+  return body.login
+}
+
+export function unlockLogin() {
+  return send('/api/login/unlock', { method: 'POST' })
 }
 
 export function signIn(password: string) {

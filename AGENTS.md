@@ -49,6 +49,8 @@ The phone can't reach the Mac over home Wi-Fi, so phone testing goes through the
 
 - Never commit a secret to any file. Production uses `npx wrangler secret put <NAME>`, local dev uses the git-ignored `.dev.vars`. `.dev.vars.example` lists the names with empty values.
 - `APP_PASSWORD` gates every API route except `/api/health` and `/api/login`. New routes go below the sign-in check in `worker/index.ts`.
+- Login refuses to work if `APP_PASSWORD` is under 20 characters (503). Signed-in devices keep working.
+- Brute-force guard in `worker/auth.ts`: 50 failed logins in a UTC day block all logins (even the right password) until the next UTC day. Two blocked days in a row lock login until it is unlocked, by the button signed-in devices see, or by `npx wrangler d1 execute plants-tracker --remote --command "DELETE FROM login_lockout; DELETE FROM login_failures"`. The Cloudflare rate limit (10/min per location) runs before it.
 - A missing `APP_PASSWORD` must keep the API locked. Changing it signs out every device, because the session token is derived from it.
 - `GEMINI_API_KEY` powers plant ID. Without it the identify route returns 503 and the rest of the app still works. `VAPID_PRIVATE_KEY` is reserved for push.
 

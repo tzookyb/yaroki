@@ -1,4 +1,4 @@
-import { isSignedIn, signIn } from './auth'
+import { getLoginGuard, isSignedIn, signIn, unlockLogin } from './auth'
 import { identifyPlant } from './gemini'
 
 const DAILY_WATERING_CHECK = '0 6 * * *'
@@ -34,6 +34,12 @@ export default {
     }
 
     if (request.method === 'GET' && pathname === '/api/session') {
+      const { lockedAt, failedToday, blockedToday } = await getLoginGuard(env)
+      return Response.json({ ok: true, login: { lockedAt, failedToday, blockedToday } })
+    }
+
+    if (request.method === 'POST' && pathname === '/api/login/unlock') {
+      await unlockLogin(env)
       return Response.json({ ok: true })
     }
 
