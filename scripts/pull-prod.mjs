@@ -62,7 +62,9 @@ try {
   // Photo keys are never reused, so a photo that is already local is up to date.
   const missing = []
   for (const { photo_key: key } of results) {
-    if (!(await env.PHOTOS.head(key))) missing.push(key)
+    if (!(await env.PHOTOS.head(key))) {
+      missing.push(key)
+    }
   }
   console.log(`Copying ${missing.length} of ${results.length} photos...`)
 

@@ -30,11 +30,19 @@ function daysUntil(date: string, today: string) {
 }
 
 function groupOf(task: Task, today: string): Group {
-  if (task.done_today) return 'done'
+  if (task.done_today) {
+    return 'done'
+  }
   const days = daysUntil(task.due_date, today)
-  if (days < 0) return 'overdue'
-  if (days === 0) return 'today'
-  if (days === 1) return 'tomorrow'
+  if (days < 0) {
+    return 'overdue'
+  }
+  if (days === 0) {
+    return 'today'
+  }
+  if (days === 1) {
+    return 'tomorrow'
+  }
   return 'later'
 }
 
@@ -172,7 +180,9 @@ function NextTasks() {
     }
   }
 
-  if (!list && !error) return null
+  if (!list && !error) {
+    return null
+  }
 
   return (
     <>
