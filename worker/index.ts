@@ -187,7 +187,9 @@ export default {
         return Response.json({ error: 'Plant not found' }, { status: 404 })
       }
       // The photo goes first, so that a failure can be retried and never leaves it orphaned in R2.
-      if (plant.photo_key) await env.PHOTOS.delete(plant.photo_key)
+      if (plant.photo_key) {
+        await env.PHOTOS.delete(plant.photo_key)
+      }
       await env.DB.prepare('DELETE FROM plants WHERE id = ?')
         .bind(plantId)
         .run()

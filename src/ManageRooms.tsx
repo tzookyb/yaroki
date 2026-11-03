@@ -47,7 +47,9 @@ function ManageRooms() {
 
   async function handleRename(event: FormEvent) {
     event.preventDefault()
-    if (!renaming) return
+    if (!renaming) {
+      return
+    }
 
     setError(null)
     try {
@@ -64,7 +66,9 @@ function ManageRooms() {
       room.plant_count === 0
         ? `למחוק את החדר "${room.name}"?`
         : `למחוק את החדר "${room.name}" ואת כל הצמחים שבו (${room.plant_count}) עם התמונות שלהם? אי אפשר לבטל את הפעולה.`
-    if (!window.confirm(message)) return
+    if (!window.confirm(message)) {
+      return
+    }
 
     setError(null)
     try {
