@@ -44,8 +44,6 @@ npm run cf-typegen         # after changing wrangler.jsonc
 npm run db:pull-prod       # replace local D1 with prod, copy missing photos; reads prod only
 ```
 
-Lint is oxlint (`.oxlintrc.json`), and it requires braces on every `if`/`else`/`for`/`while`, even one-line bodies (`npx oxlint --fix` adds them).
-
 `db:pull-prod` also runs from the dev-only button in the header's settings menu. Its route lives in `vite.config.ts` with `apply: 'serve'`, so it never ships. Keep the script's `--remote` calls read-only (`d1 export`, `r2 object get`).
 
 On Idan's Mac, Node comes from fnm and is missing from non-interactive shells. Prefix commands with `export PATH="$HOME/.local/share/fnm/node-versions/v26.13.0/installation/bin:$PATH"`.
