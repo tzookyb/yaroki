@@ -1,11 +1,22 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { pullProd, signOut } from './api'
 import ManageRooms from './ManageRooms'
 
+const DRAWER_MS = 200
+
 function AppHeader({ onSignOut }: { onSignOut: () => void }) {
+  const menu = useRef<HTMLDivElement>(null)
   const [view, setView] = useState<'menu' | 'rooms'>('menu')
+  const [closing, setClosing] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // The drawer slides out while it is still open, then hides. Hiding first and animating
+  // the exit with CSS showed the content out of place for a moment.
+  function closeMenu() {
+    setClosing(true)
+    setTimeout(() => menu.current?.hidePopover(), DRAWER_MS)
+  }
 
   async function handleSignOut() {
     setError(null)
@@ -51,10 +62,14 @@ function AppHeader({ onSignOut }: { onSignOut: () => void }) {
       </button>
       <div
         id="settings-menu"
-        className="settings-menu"
+        ref={menu}
+        className={closing ? 'settings-menu closing' : 'settings-menu'}
         popover="auto"
         onToggle={(event) => {
-          if (event.newState === 'closed') setView('menu')
+          if (event.newState === 'closed') {
+            setView('menu')
+            setClosing(false)
+          }
         }}
       >
         <div className="settings-body">
@@ -74,8 +89,7 @@ function AppHeader({ onSignOut }: { onSignOut: () => void }) {
               type="button"
               className="icon-button"
               aria-label="סגירה"
-              popoverTarget="settings-menu"
-              popoverTargetAction="hide"
+              onClick={closeMenu}
             >
               ✕&#xFE0E;
             </button>

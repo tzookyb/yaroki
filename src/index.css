@@ -132,13 +132,16 @@ button:disabled {
   background: #f6f7f2;
   color: inherit;
   translate: -100% 0;
-  /* Slides in on open only. Closing hides it at once, because an animated close
-     left the content out of place for a moment. */
+  /* Matches DRAWER_MS in src/AppHeader.tsx. */
   transition: translate 0.2s ease-out;
 }
 
 .settings-menu:popover-open {
   translate: 0 0;
+}
+
+.settings-menu.closing {
+  translate: -100% 0;
 }
 
 .settings-body {
