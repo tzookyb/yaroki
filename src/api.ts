@@ -20,12 +20,6 @@ export type RoomDetails = Omit<Room, 'plant_count'> & {
   plants: Plant[]
 }
 
-export type LoginGuard = {
-  lockedAt: string | null
-  failedToday: number
-  blockedToday: boolean
-}
-
 export class HttpError extends Error {
   status: number
 
@@ -46,12 +40,9 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   return response.json()
 }
 
-// Null when signed out.
-export async function getSession() {
+export async function isSignedIn() {
   const response = await fetch('/api/session')
-  if (!response.ok) return null
-  const body: { login: LoginGuard } = await response.json()
-  return body.login
+  return response.ok
 }
 
 export function signIn(password: string) {

@@ -41,21 +41,37 @@ export async function isSignedIn(request: Request, env: Env) {
     .find((cookie) => cookie.startsWith(`${COOKIE_NAME}=`))
     ?.slice(COOKIE_NAME.length + 1)
   if (!token) return false
-  return isEqual(token, await sessionToken(env.APP_PASSWORD))
+  if (!(await isEqual(token, await sessionToken(env.APP_PASSWORD)))) return false
+  // A lockout signs out every device, on its next request.
+  const locked = await env.DB.prepare('SELECT 1 FROM login_lockout WHERE id = 1').first()
+  return locked ? 'locked' : true
+}
+
+export function signOutResponse() {
+  return Response.json(
+    { error: 'Login blocked' },
+    {
+      status: 401,
+      headers: {
+        'Set-Cookie': `${COOKIE_NAME}=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Strict`,
+      },
+    },
+  )
 }
 
 // Short passwords are refused at login, so a weak secret can't be guessed.
 // Vite sets DEV only under `npm run dev`, so local dev can use any password.
 const MIN_PASSWORD_LENGTH = import.meta.env.DEV ? 1 : 20
 // After this many failed logins in one UTC day, every login is refused until the next day.
-// Two such days in a row lock login until the lockout row is deleted from the Cloudflare dashboard.
+// Two such days in a row sign out every device and lock login until the lockout row is
+// deleted from the Cloudflare dashboard.
 const DAILY_FAILURE_CAP = 50
 
 function utcDay(offsetDays = 0) {
   return new Date(Date.now() + offsetDays * 86_400_000).toISOString().slice(0, 10)
 }
 
-export async function getLoginGuard(env: Env) {
+async function getLoginGuard(env: Env) {
   const row = await env.DB.prepare(
     `SELECT
        (SELECT locked_at FROM login_lockout WHERE id = 1) AS locked_at,
@@ -64,13 +80,10 @@ export async function getLoginGuard(env: Env) {
   )
     .bind(utcDay(), utcDay(-1))
     .first<{ locked_at: string | null; today: number | null; yesterday: number | null }>()
-  const failedToday = row?.today ?? 0
-  const failedYesterday = row?.yesterday ?? 0
   return {
-    lockedAt: row?.locked_at ?? null,
-    failedToday,
-    blockedToday: failedToday >= DAILY_FAILURE_CAP,
-    blockedYesterday: failedYesterday >= DAILY_FAILURE_CAP,
+    locked: Boolean(row?.locked_at),
+    blockedToday: (row?.today ?? 0) >= DAILY_FAILURE_CAP,
+    blockedYesterday: (row?.yesterday ?? 0) >= DAILY_FAILURE_CAP,
   }
 }
 
@@ -101,11 +114,8 @@ export async function signIn(request: Request, env: Env) {
 
   // Checked before the password, so a blocked day refuses even the right password.
   const guard = await getLoginGuard(env)
-  if (guard.lockedAt) {
-    return Response.json({ error: 'Login locked' }, { status: 423 })
-  }
-  if (guard.blockedToday) {
-    return Response.json({ error: 'Login blocked for today' }, { status: 429 })
+  if (guard.locked || guard.blockedToday) {
+    return Response.json({ error: 'Login blocked' }, { status: 423 })
   }
 
   const body = await request.json<{ password?: unknown }>().catch(() => null)

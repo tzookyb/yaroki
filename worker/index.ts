@@ -1,4 +1,4 @@
-import { getLoginGuard, isSignedIn, signIn } from './auth'
+import { isSignedIn, signIn, signOutResponse } from './auth'
 import { identifyPlant } from './gemini'
 
 const DAILY_WATERING_CHECK = '0 6 * * *'
@@ -29,13 +29,14 @@ export default {
     }
 
     // Every route below this line needs a session.
-    if (!(await isSignedIn(request, env))) {
+    const session = await isSignedIn(request, env)
+    if (session === 'locked') return signOutResponse()
+    if (!session) {
       return Response.json({ error: 'Not signed in' }, { status: 401 })
     }
 
     if (request.method === 'GET' && pathname === '/api/session') {
-      const { lockedAt, failedToday, blockedToday } = await getLoginGuard(env)
-      return Response.json({ ok: true, login: { lockedAt, failedToday, blockedToday } })
+      return Response.json({ ok: true })
     }
 
     if (request.method === 'GET' && pathname === '/api/plants') {
