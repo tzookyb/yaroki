@@ -39,7 +39,8 @@ Tasks are computed from plant fields in `worker/tasks.ts`, not stored. A new tas
 
 ```bash
 npm run dev                # local frontend + Worker, D1 and R2 stored in .wrangler/
-npm run check              # format:check + lint + build, the same checks CI runs
+npm run check              # format:check + lint + build + test, the same checks CI runs
+npm test                   # Vitest inside the Workers runtime, see below
 npm run format             # Prettier writes; oxlint warnings fail the lint
 npm run deploy             # CI runs this on merge to main; by hand only in an emergency
 npm run db:migrate:local
@@ -51,6 +52,15 @@ npm run db:pull-prod       # replace local D1 with prod, copy missing photos; re
 `db:pull-prod` also runs from the dev-only button in the header's settings menu. Its route lives in `vite.config.ts` with `apply: 'serve'`, so it never ships. Keep the script's `--remote` calls read-only (`d1 export`, `r2 object get`).
 
 In `npm run dev` the favicon is yellow instead of green (`src/main.tsx`). Prod builds keep the green one.
+
+## Tests
+
+`test/` runs with Vitest and `@cloudflare/vitest-plugin`, inside workerd with a local D1, R2 and rate limiter from `wrangler.jsonc` (`vitest.config.ts`). Migrations are applied once per file and `test/setup.ts` empties the tables before each test. Call the Worker through `api()` in `test/helpers.ts`.
+
+- A new API route must be added to the route guard list in `test/auth.test.ts`.
+- Gemini is always mocked. A mocked `fetch` used by a route must build its `Response` inside `mockImplementation`, because a Worker can't read a body made in another request.
+- Fake timers move `Date` only. D1's `datetime('now')` keeps the real time, so tests that log events use the real clock.
+- `import.meta.env.DEV` is true under Vitest, so the 20-character password rule isn't tested.
 
 ## Secrets and auth
 
