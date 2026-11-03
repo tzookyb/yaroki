@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "plants-tracker",
+  "name": "yaroki",
   "main": "worker/index.ts",
   "compatibility_date": "2026-10-01",
   "assets": {
@@ -8,6 +8,9 @@
     "run_worker_first": ["/api/*"]
   },
   "observability": { "enabled": true },
+  // D1 and R2 keep their names from before the app was renamed to yaroki.
+  // They can't be renamed in place, and the names are also in package.json
+  // and scripts/pull-prod.mjs.
   "d1_databases": [
     {
       "binding": "DB",
