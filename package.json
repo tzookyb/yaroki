@@ -19,6 +19,8 @@
   },
   "dependencies": {
     "@hono/zod-validator": "^0.9.1",
+    "@sentry/cloudflare": "^11.10.0",
+    "@sentry/react": "^11.10.0",
     "hono": "^4.13.16",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

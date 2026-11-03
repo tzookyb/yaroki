@@ -59,6 +59,7 @@ In `npm run dev` the favicon is yellow instead of green (`src/main.tsx`). Prod b
 - Login refuses to work if `APP_PASSWORD` is under 20 characters (503). Signed-in devices keep working. `npm run dev` skips this check.
 - Login is guarded by the Cloudflare rate limit (10/min per IP, per location) and the 20-character rule. There is no lockout on purpose: a lockout lets anyone lock the owner out.
 - Each sign-in creates a random token. The cookie holds it, and the `sessions` table holds only its SHA-256 hash, valid for 365 days. Sign-out deletes this device's row, "sign out everywhere" (`/api/logout-all`) deletes all rows. Changing `APP_PASSWORD` does not sign anyone out. A missing `APP_PASSWORD` locks the API, even for signed-in devices.
+- Sentry is off until it has a DSN: `SENTRY_DSN` (Worker secret) for the API and cron, `VITE_SENTRY_DSN` (build-time env var) for the app. `shared/sentry.ts` keeps IPs, cookies, headers and bodies out of reports, because they hold the session token and the password. The Worker needs the `nodejs_als` flag for it. `Sentry.ErrorBoundary` in `src/main.tsx` shows `src/ErrorFallback.tsx` instead of a blank screen, with or without a DSN.
 - `GEMINI_API_KEY` powers plant ID. Without it the identify route returns 503 and the rest of the app still works. `VAPID_PRIVATE_KEY` is reserved for push.
 
 ## Free-tier limits
