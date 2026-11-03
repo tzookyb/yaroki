@@ -31,6 +31,17 @@ async function sessionToken(password: string) {
   ).join('')
 }
 
+export function signOut() {
+  return Response.json(
+    { ok: true },
+    {
+      headers: {
+        'Set-Cookie': `${COOKIE_NAME}=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Strict`,
+      },
+    },
+  )
+}
+
 // Both checks fail when APP_PASSWORD is unset, so a missing secret locks the API.
 export async function isSignedIn(request: Request, env: Env) {
   if (!env.APP_PASSWORD) return false

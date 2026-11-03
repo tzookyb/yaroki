@@ -101,6 +101,62 @@ button:disabled {
   padding: 0.3rem 0.75rem;
 }
 
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: -1rem -1rem 1rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #8884;
+}
+
+.app-title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #2f6b3f;
+  text-decoration: none;
+}
+
+.settings-button {
+  anchor-name: --settings;
+}
+
+.settings-menu {
+  position-anchor: --settings;
+  inset: auto;
+  top: anchor(bottom);
+  left: anchor(left);
+  margin: 0.25rem 0 0;
+  padding: 0.5rem;
+  border: 1px solid #8884;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: inherit;
+  box-shadow: 0 4px 16px #0002;
+}
+
+.settings-menu:popover-open {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.settings-menu p {
+  margin: 0;
+  max-width: 16rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .app-title {
+    color: #8fc79c;
+  }
+
+  .settings-menu {
+    background: #222a24;
+  }
+}
+
 .page-header {
   display: flex;
   align-items: center;

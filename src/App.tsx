@@ -1,5 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { isSignedIn } from './api'
+import AppHeader from './AppHeader'
 import LoginPage from './LoginPage'
 import RoomPage from './RoomPage'
 import RoomsPage from './RoomsPage'
@@ -24,6 +25,7 @@ function App() {
 
   return (
     <main>
+      {signedIn && <AppHeader onSignOut={() => setSignedIn(false)} />}
       {!signedIn ? (
         <LoginPage onSignIn={() => setSignedIn(true)} />
       ) : roomId ? (

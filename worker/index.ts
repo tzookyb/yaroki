@@ -1,4 +1,4 @@
-import { isSignedIn, signIn } from './auth'
+import { isSignedIn, signIn, signOut } from './auth'
 import { identifyPlant } from './gemini'
 
 const DAILY_WATERING_CHECK = '0 6 * * *'
@@ -35,6 +35,10 @@ export default {
 
     if (request.method === 'GET' && pathname === '/api/session') {
       return Response.json({ ok: true })
+    }
+
+    if (request.method === 'POST' && pathname === '/api/logout') {
+      return signOut()
     }
 
     if (request.method === 'GET' && pathname === '/api/plants') {
