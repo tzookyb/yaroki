@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { pullProd, signOut } from './api'
+import ManageRooms from './ManageRooms'
 
 function AppHeader({ onSignOut }: { onSignOut: () => void }) {
+  const [view, setView] = useState<'menu' | 'rooms'>('menu')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -47,21 +49,71 @@ function AppHeader({ onSignOut }: { onSignOut: () => void }) {
       >
         ⚙&#xFE0E;
       </button>
-      <div id="settings-menu" className="settings-menu" popover="auto">
-        <button type="button" className="secondary" onClick={handleSignOut}>
-          התנתקות
-        </button>
-        {import.meta.env.DEV && (
-          <button
-            type="button"
-            className="secondary"
-            disabled={busy}
-            onClick={handlePullProd}
-          >
-            {busy ? 'מושך נתונים...' : 'משיכת נתונים מהפרודקשן (מקומי בלבד)'}
-          </button>
-        )}
-        {error && <p role="alert">{error}</p>}
+      <div
+        id="settings-menu"
+        className="settings-menu"
+        popover="auto"
+        onToggle={(event) => {
+          if (event.newState === 'closed') setView('menu')
+        }}
+      >
+        <div className="settings-body">
+          <div className="settings-header">
+            {view === 'menu' ? (
+              <h2>הגדרות</h2>
+            ) : (
+              <button
+                type="button"
+                className="icon-button back-button"
+                onClick={() => setView('menu')}
+              >
+                → ניהול חדרים
+              </button>
+            )}
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="סגירה"
+              popoverTarget="settings-menu"
+              popoverTargetAction="hide"
+            >
+              ✕&#xFE0E;
+            </button>
+          </div>
+          {view === 'rooms' ? (
+            <ManageRooms />
+          ) : (
+            <>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setView('rooms')}
+              >
+                ניהול חדרים
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={handleSignOut}
+              >
+                התנתקות
+              </button>
+              {import.meta.env.DEV && (
+                <button
+                  type="button"
+                  className="secondary"
+                  disabled={busy}
+                  onClick={handlePullProd}
+                >
+                  {busy
+                    ? 'מושך נתונים...'
+                    : 'משיכת נתונים מהפרודקשן (מקומי בלבד)'}
+                </button>
+              )}
+              {error && <p role="alert">{error}</p>}
+            </>
+          )}
+        </div>
       </div>
     </header>
   )
