@@ -2,7 +2,6 @@ import { useState, type FormEvent } from 'react'
 import { HttpError, signIn } from './api'
 
 const ERROR_TEXT_BY_STATUS: Record<number, string> = {
-  423: 'Login blocked',
   429: 'יותר מדי ניסיונות כניסה. נסו שוב מאוחר יותר.',
   503: 'הסיסמה בשרת קצרה מדי. צריך סיסמה של 20 תווים לפחות.',
 }

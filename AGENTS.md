@@ -56,8 +56,8 @@ In `npm run dev` the favicon is yellow instead of green (`src/main.tsx`). Prod b
 - Never commit a secret to any file. Production uses `npx wrangler secret put <NAME>`, local dev uses the git-ignored `.dev.vars`. `.dev.vars.example` lists the names with empty values.
 - `APP_PASSWORD` gates every API route except `/api/health` and `/api/login`. New routes go below the sign-in check in `worker/index.ts`.
 - Login refuses to work if `APP_PASSWORD` is under 20 characters (503). Signed-in devices keep working. `npm run dev` skips this check.
-- Brute-force guard in `worker/auth.ts`: 20 failed logins in a UTC day block all logins (even the right password) until the next UTC day. Two blocked days in a row sign out every device and lock login until the owner unlocks it by hand in the D1 console. By design: no unlock button, route or warning banner in the app, and the login screen only says "Login blocked" in English (423), with no reason. The Cloudflare rate limit (10/min per location) runs before it.
-- A missing `APP_PASSWORD` must keep the API locked. Changing it signs out every device, because the session token is derived from it.
+- Login is guarded by the Cloudflare rate limit (10/min per IP, per location) and the 20-character rule. There is no lockout on purpose: a lockout lets anyone lock the owner out.
+- Each sign-in creates a random token. The cookie holds it, and the `sessions` table holds only its SHA-256 hash, valid for 365 days. Sign-out deletes this device's row, "sign out everywhere" (`/api/logout-all`) deletes all rows. Changing `APP_PASSWORD` does not sign anyone out. A missing `APP_PASSWORD` locks the API, even for signed-in devices.
 - `GEMINI_API_KEY` powers plant ID. Without it the identify route returns 503 and the rest of the app still works. `VAPID_PRIVATE_KEY` is reserved for push.
 
 ## Free-tier limits

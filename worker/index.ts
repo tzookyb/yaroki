@@ -1,4 +1,4 @@
-import { isSignedIn, signIn, signOut, signOutResponse } from './auth'
+import { isSignedIn, signIn, signOut, signOutEverywhere } from './auth'
 import { identifyPlant } from './gemini'
 import { getTasks, setTaskDone } from './tasks'
 
@@ -26,15 +26,15 @@ export default {
     }
 
     if (request.method === 'POST' && pathname === '/api/login') {
-      return signIn(request, env)
+      const body = await request
+        .json<{ password?: unknown }>()
+        .catch(() => null)
+      const password = typeof body?.password === 'string' ? body.password : ''
+      return signIn(request, env, password)
     }
 
     // Every route below this line needs a session.
-    const session = await isSignedIn(request, env)
-    if (session === 'locked') {
-      return signOutResponse()
-    }
-    if (!session) {
+    if (!(await isSignedIn(request, env))) {
       return Response.json({ error: 'Not signed in' }, { status: 401 })
     }
 
@@ -43,7 +43,11 @@ export default {
     }
 
     if (request.method === 'POST' && pathname === '/api/logout') {
-      return signOut()
+      return signOut(request, env)
+    }
+
+    if (request.method === 'POST' && pathname === '/api/logout-all') {
+      return signOutEverywhere(env)
     }
 
     if (request.method === 'GET' && pathname === '/api/plants') {

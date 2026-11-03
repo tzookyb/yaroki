@@ -1,137 +1,57 @@
 const COOKIE_NAME = 'session'
+const SESSION_DAYS = 365
 const CLEAR_COOKIE = `${COOKIE_NAME}=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Strict`
-const COOKIE_MAX_AGE_SECONDS = 365 * 24 * 60 * 60
+
+// Short passwords are refused at login, so a weak secret can't be guessed.
+// Vite sets DEV only under `npm run dev`, so local dev can use any password.
+const MIN_PASSWORD_LENGTH = import.meta.env.DEV ? 1 : 20
 
 const encoder = new TextEncoder()
 
+function toHex(bytes: ArrayBuffer | Uint8Array) {
+  return new Uint8Array(bytes).toHex()
+}
+
+async function sha256(text: string) {
+  return crypto.subtle.digest('SHA-256', encoder.encode(text))
+}
+
 async function isEqual(a: string, b: string) {
   // Hashing first gives equal lengths, which timingSafeEqual requires.
-  const [hashA, hashB] = await Promise.all([
-    crypto.subtle.digest('SHA-256', encoder.encode(a)),
-    crypto.subtle.digest('SHA-256', encoder.encode(b)),
-  ])
+  const [hashA, hashB] = await Promise.all([sha256(a), sha256(b)])
   return crypto.subtle.timingSafeEqual(hashA, hashB)
 }
 
-// The token is derived from the password, so changing the secret signs out every device.
-async function sessionToken(password: string) {
-  const key = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(password),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign'],
-  )
-  const signature = await crypto.subtle.sign(
-    'HMAC',
-    key,
-    encoder.encode('yaroki-session'),
-  )
-  return Array.from(new Uint8Array(signature), (byte) =>
-    byte.toString(16).padStart(2, '0'),
-  ).join('')
-}
-
-export function signOut() {
-  return Response.json(
-    { ok: true },
-    {
-      headers: {
-        'Set-Cookie': CLEAR_COOKIE,
-      },
-    },
-  )
-}
-
-// Both checks fail when APP_PASSWORD is unset, so a missing secret locks the API.
-export async function isSignedIn(request: Request, env: Env) {
-  if (!env.APP_PASSWORD) {
-    return false
-  }
-  const token = request.headers
+function readSessionToken(request: Request) {
+  return request.headers
     .get('Cookie')
     ?.split(';')
     .map((cookie) => cookie.trim())
     .find((cookie) => cookie.startsWith(`${COOKIE_NAME}=`))
     ?.slice(COOKIE_NAME.length + 1)
+}
+
+// A missing APP_PASSWORD keeps the API locked, even for devices that signed in before.
+export async function isSignedIn(request: Request, env: Env) {
+  if (!env.APP_PASSWORD) {
+    return false
+  }
+  const token = readSessionToken(request)
   if (!token) {
     return false
   }
-  if (!(await isEqual(token, await sessionToken(env.APP_PASSWORD)))) {
-    return false
-  }
-  // A lockout signs out every device, on its next request.
-  const locked = await env.DB.prepare(
-    'SELECT 1 FROM login_lockout WHERE id = 1',
-  ).first()
-  return locked ? 'locked' : true
-}
-
-export function signOutResponse() {
-  return Response.json(
-    { error: 'Login blocked' },
-    {
-      status: 401,
-      headers: {
-        'Set-Cookie': CLEAR_COOKIE,
-      },
-    },
+  const session = await env.DB.prepare(
+    "SELECT 1 FROM sessions WHERE token_hash = ? AND expires_at > datetime('now')",
   )
+    .bind(toHex(await sha256(token)))
+    .first()
+  return Boolean(session)
 }
 
-// Short passwords are refused at login, so a weak secret can't be guessed.
-// Vite sets DEV only under `npm run dev`, so local dev can use any password.
-const MIN_PASSWORD_LENGTH = import.meta.env.DEV ? 1 : 20
-// After this many failed logins in one UTC day, every login is refused until the next day.
-// Two such days in a row sign out every device and lock login until the lockout row is
-// deleted from the Cloudflare dashboard.
-const DAILY_FAILURE_CAP = 20
-
-function utcDay(offsetDays = 0) {
-  return new Date(Date.now() + offsetDays * 86_400_000)
-    .toISOString()
-    .slice(0, 10)
-}
-
-async function getLoginGuard(env: Env) {
-  const row = await env.DB.prepare(
-    `SELECT
-       (SELECT locked_at FROM login_lockout WHERE id = 1) AS locked_at,
-       (SELECT count FROM login_failures WHERE day = ?1) AS today,
-       (SELECT count FROM login_failures WHERE day = ?2) AS yesterday`,
-  )
-    .bind(utcDay(), utcDay(-1))
-    .first<{
-      locked_at: string | null
-      today: number | null
-      yesterday: number | null
-    }>()
-  return {
-    locked: Boolean(row?.locked_at),
-    blockedToday: (row?.today ?? 0) >= DAILY_FAILURE_CAP,
-    blockedYesterday: (row?.yesterday ?? 0) >= DAILY_FAILURE_CAP,
-  }
-}
-
-async function recordFailure(env: Env, blockedYesterday: boolean) {
-  const [, upsert] = await env.DB.batch<{ count: number }>([
-    env.DB.prepare('DELETE FROM login_failures WHERE day < ?').bind(utcDay(-1)),
-    env.DB.prepare(
-      `INSERT INTO login_failures (day, count) VALUES (?, 1)
-       ON CONFLICT (day) DO UPDATE SET count = count + 1
-       RETURNING count`,
-    ).bind(utcDay()),
-  ])
-  const count = upsert.results[0]?.count ?? 0
-  if (count >= DAILY_FAILURE_CAP && blockedYesterday) {
-    await env.DB.prepare(
-      'INSERT OR IGNORE INTO login_lockout (id) VALUES (1)',
-    ).run()
-  }
-}
-
-export async function signIn(request: Request, env: Env) {
-  const { success } = await env.LOGIN_LIMIT.limit({ key: 'login' })
+export async function signIn(request: Request, env: Env, password: string) {
+  // Per IP, so someone else's wrong guesses never block the owner.
+  const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown'
+  const { success } = await env.LOGIN_LIMIT.limit({ key: ip })
   if (!success) {
     return Response.json({ error: 'Too many attempts' }, { status: 429 })
   }
@@ -143,26 +63,50 @@ export async function signIn(request: Request, env: Env) {
     )
   }
 
-  // Checked before the password, so a blocked day refuses even the right password.
-  const guard = await getLoginGuard(env)
-  if (guard.locked || guard.blockedToday) {
-    return Response.json({ error: 'Login blocked' }, { status: 423 })
-  }
-
-  const body = await request.json<{ password?: unknown }>().catch(() => null)
-  const password = typeof body?.password === 'string' ? body.password : ''
-  if (!password || !(await isEqual(password, env.APP_PASSWORD))) {
-    await recordFailure(env, guard.blockedYesterday)
+  if (!(await isEqual(password, env.APP_PASSWORD))) {
     return Response.json({ error: 'Wrong password' }, { status: 401 })
   }
 
-  const token = await sessionToken(env.APP_PASSWORD)
+  const token = toHex(crypto.getRandomValues(new Uint8Array(32)))
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM sessions WHERE expires_at <= datetime('now')"),
+    env.DB.prepare(
+      `INSERT INTO sessions (token_hash, user_agent, expires_at)
+       VALUES (?, ?, datetime('now', '+${SESSION_DAYS} days'))`,
+    ).bind(
+      toHex(await sha256(token)),
+      request.headers.get('User-Agent')?.slice(0, 200) ?? null,
+    ),
+  ])
   return Response.json(
     { ok: true },
     {
       headers: {
-        'Set-Cookie': `${COOKIE_NAME}=${token}; Max-Age=${COOKIE_MAX_AGE_SECONDS}; Path=/; HttpOnly; Secure; SameSite=Strict`,
+        'Set-Cookie': `${COOKIE_NAME}=${token}; Max-Age=${SESSION_DAYS * 24 * 60 * 60}; Path=/; HttpOnly; Secure; SameSite=Strict`,
       },
     },
+  )
+}
+
+// Signs out this device only.
+export async function signOut(request: Request, env: Env) {
+  const token = readSessionToken(request)
+  if (token) {
+    await env.DB.prepare('DELETE FROM sessions WHERE token_hash = ?')
+      .bind(toHex(await sha256(token)))
+      .run()
+  }
+  return Response.json(
+    { ok: true },
+    { headers: { 'Set-Cookie': CLEAR_COOKIE } },
+  )
+}
+
+// For a lost or stolen device: ends every session, this one included.
+export async function signOutEverywhere(env: Env) {
+  await env.DB.prepare('DELETE FROM sessions').run()
+  return Response.json(
+    { ok: true },
+    { headers: { 'Set-Cookie': CLEAR_COOKIE } },
   )
 }

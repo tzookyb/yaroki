@@ -68,6 +68,10 @@ export function signOut() {
   return send('/api/logout', { method: 'POST' })
 }
 
+export function signOutEverywhere() {
+  return send('/api/logout-all', { method: 'POST' })
+}
+
 // Dev only: the route exists only in the Vite dev server, see vite.config.ts.
 export function pullProd() {
   return send('/__dev/pull-prod', {

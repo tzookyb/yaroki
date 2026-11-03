@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { pullProd, signOut } from './api'
+import { pullProd, signOut, signOutEverywhere } from './api'
 import ManageRooms from './ManageRooms'
 
 const DRAWER_MS = 200
@@ -22,6 +22,19 @@ function AppHeader({ onSignOut }: { onSignOut: () => void }) {
     setError(null)
     try {
       await signOut()
+      onSignOut()
+    } catch {
+      setError('לא הצלחנו להתנתק.')
+    }
+  }
+
+  async function handleSignOutEverywhere() {
+    if (!window.confirm('להתנתק בכל המכשירים, כולל זה?')) {
+      return
+    }
+    setError(null)
+    try {
+      await signOutEverywhere()
       onSignOut()
     } catch {
       setError('לא הצלחנו להתנתק.')
@@ -111,6 +124,13 @@ function AppHeader({ onSignOut }: { onSignOut: () => void }) {
                 onClick={handleSignOut}
               >
                 התנתקות
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={handleSignOutEverywhere}
+              >
+                התנתקות מכל המכשירים
               </button>
               {import.meta.env.DEV && (
                 <button
