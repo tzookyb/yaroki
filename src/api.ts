@@ -54,10 +54,6 @@ export async function getSession() {
   return body.login
 }
 
-export function unlockLogin() {
-  return send('/api/login/unlock', { method: 'POST' })
-}
-
 export function signIn(password: string) {
   return request('/api/login', {
     method: 'POST',
