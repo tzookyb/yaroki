@@ -6,6 +6,8 @@ Setup and first-deploy steps are in `README.md`. This file holds only what an ag
 
 **Keeping this file current:** when a change makes anything here wrong, or adds context a future agent would otherwise have to rediscover, update this file in the same commit. Keep only what is strictly necessary, and delete what no longer applies.
 
+**Public vs private:** this repo is public. This file holds only what any contributor could use. Anything personal, machine-specific or owner-only (names, local paths, shell setup, home network, manual prod steps, old naming history) goes in the git-ignored `CLAUDE.local.md` on the owner's machine, never in a committed file or commit message. If a cloud session has no `CLAUDE.local.md`, it still must not commit such notes.
+
 ## Stack and layout
 
 One npm package. `@cloudflare/vite-plugin` runs the frontend and the Worker together from `npm run dev`.
@@ -45,8 +47,6 @@ npm run db:pull-prod       # replace local D1 with prod, copy missing photos; re
 ```
 
 `db:pull-prod` also runs from the dev-only button in the header's settings menu. Its route lives in `vite.config.ts` with `apply: 'serve'`, so it never ships. Keep the script's `--remote` calls read-only (`d1 export`, `r2 object get`).
-
-Private or machine-specific notes (local paths, shell setup, owner-only steps) go in the git-ignored `CLAUDE.local.md`, never in this file or any other committed file.
 
 In `npm run dev` the favicon is yellow instead of green (`src/main.tsx`). Prod builds keep the green one.
 
