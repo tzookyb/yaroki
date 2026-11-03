@@ -1,6 +1,6 @@
 import { isSignedIn, signIn, signOut } from './auth'
 import { identifyPlant } from './gemini'
-import { completeTask, getUpcomingTasks } from './tasks'
+import { getTasks, setTaskDone } from './tasks'
 
 const DAILY_WATERING_CHECK = '0 6 * * *'
 const WEEKLY_AI_CARE_CHECK = '0 7 * * SUN'
@@ -50,13 +50,16 @@ export default {
     }
 
     if (request.method === 'GET' && pathname === '/api/tasks') {
-      return Response.json(await getUpcomingTasks(env.DB))
+      const all = new URL(request.url).searchParams.has('all')
+      return Response.json(await getTasks(env.DB, all))
     }
 
+    // POST marks a task done, DELETE undoes today's completion.
     const doneTask = pathname.match(/^\/api\/plants\/(\d+)\/tasks\/(\w+)\/done$/)
-    if (request.method === 'POST' && doneTask) {
+    if ((request.method === 'POST' || request.method === 'DELETE') && doneTask) {
       const [, donePlantId, type] = doneTask
-      if (!(await completeTask(env.DB, type, Number(donePlantId)))) {
+      const done = request.method === 'POST'
+      if (!(await setTaskDone(env.DB, type, Number(donePlantId), done))) {
         return Response.json({ error: 'Task not found' }, { status: 404 })
       }
       return new Response(null, { status: 204 })

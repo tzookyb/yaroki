@@ -1,4 +1,5 @@
 // Care tasks are computed from plant fields, not stored. A new task type adds an entry to TASK_TYPES.
+// Each plant has at most one task of each type.
 
 const TIME_ZONE = 'Asia/Jerusalem'
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -10,8 +11,9 @@ export type Task = {
   photo_key: string | null
   room_id: number | null
   room_name: string | null
-  // YYYY-MM-DD in Asia/Jerusalem.
+  // YYYY-MM-DD in Asia/Jerusalem. For a task done today, this is the next due date.
   due_date: string
+  done_today: boolean
 }
 
 type TaskPlant = {
@@ -27,7 +29,9 @@ type TaskPlant = {
 type TaskType = {
   // The due date, or null when the plant has no such task.
   dueDate(plant: TaskPlant, today: string): string | null
-  complete(db: D1Database, plantId: number, today: string): D1PreparedStatement[]
+  doneToday(plant: TaskPlant, today: string): boolean
+  complete(db: D1Database, plantId: number, today: string): Promise<unknown>
+  undo(db: D1Database, plantId: number, today: string): Promise<unknown>
 }
 
 const TASK_TYPES: Record<string, TaskType> = {
@@ -38,24 +42,57 @@ const TASK_TYPES: Record<string, TaskType> = {
       if (!plant.last_watered) return today
       return addDays(plant.last_watered, plant.water_every_days)
     },
+    doneToday(plant, today) {
+      return plant.last_watered === today
+    },
     complete(db, plantId, today) {
-      return [
+      return db.batch([
         db
           .prepare('UPDATE plants SET last_watered = ? WHERE id = ?')
           .bind(today, plantId),
         db
           .prepare("INSERT INTO events (plant_id, type) VALUES (?, 'watered')")
           .bind(plantId),
-      ]
+      ])
+    },
+    // Removes today's waterings, and goes back to the latest one before today, if any.
+    async undo(db, plantId, today) {
+      const { results } = await db
+        .prepare(
+          `SELECT id, created_at FROM events
+           WHERE plant_id = ? AND type = 'watered'
+           ORDER BY id DESC LIMIT 10`,
+        )
+        .bind(plantId)
+        .all<{ id: number; created_at: string }>()
+      const todays = results.filter(
+        (event) => jerusalemDate(event.created_at) === today,
+      )
+      const previous = results.find(
+        (event) => jerusalemDate(event.created_at) !== today,
+      )
+      return db.batch([
+        db
+          .prepare('UPDATE plants SET last_watered = ? WHERE id = ?')
+          .bind(previous ? jerusalemDate(previous.created_at) : null, plantId),
+        ...todays.map((event) =>
+          db.prepare('DELETE FROM events WHERE id = ?').bind(event.id),
+        ),
+      ])
     },
   },
 }
 
+// en-CA formats as YYYY-MM-DD.
+const dateFormat = new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE })
+
 export function todayInJerusalem() {
-  // en-CA formats as YYYY-MM-DD.
-  return new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE }).format(
-    new Date(),
-  )
+  return dateFormat.format(new Date())
+}
+
+// D1's datetime('now') is UTC, as YYYY-MM-DD HH:MM:SS.
+function jerusalemDate(utcDateTime: string) {
+  return dateFormat.format(new Date(`${utcDateTime.replace(' ', 'T')}Z`))
 }
 
 function addDays(date: string, days: number) {
@@ -63,8 +100,8 @@ function addDays(date: string, days: number) {
   return new Date(time).toISOString().slice(0, 10)
 }
 
-// Tasks due by tomorrow, overdue ones included, most urgent first.
-export async function getUpcomingTasks(db: D1Database) {
+// Open tasks most urgent first, then tasks done today. Without `all`, only open tasks due by tomorrow.
+export async function getTasks(db: D1Database, all: boolean) {
   const today = todayInJerusalem()
   const tomorrow = addDays(today, 1)
   const { results: plants } = await db
@@ -80,7 +117,9 @@ export async function getUpcomingTasks(db: D1Database) {
   for (const plant of plants) {
     for (const [type, taskType] of Object.entries(TASK_TYPES)) {
       const dueDate = taskType.dueDate(plant, today)
-      if (!dueDate || dueDate > tomorrow) continue
+      if (!dueDate) continue
+      const doneToday = taskType.doneToday(plant, today)
+      if (!all && !doneToday && dueDate > tomorrow) continue
       tasks.push({
         type,
         plant_id: plant.id,
@@ -89,11 +128,13 @@ export async function getUpcomingTasks(db: D1Database) {
         room_id: plant.room_id,
         room_name: plant.room_name,
         due_date: dueDate,
+        done_today: doneToday,
       })
     }
   }
   tasks.sort(
     (a, b) =>
+      Number(a.done_today) - Number(b.done_today) ||
       a.due_date.localeCompare(b.due_date) ||
       (a.room_name ?? '').localeCompare(b.room_name ?? '') ||
       a.plant_id - b.plant_id,
@@ -101,19 +142,29 @@ export async function getUpcomingTasks(db: D1Database) {
   return { today, tasks }
 }
 
-// Returns false when the task type or the plant does not exist.
-export async function completeTask(
+// Returns false when the task type or the plant does not exist, or an undo has nothing to undo.
+export async function setTaskDone(
   db: D1Database,
   type: string,
   plantId: number,
+  done: boolean,
 ) {
   const taskType = Object.hasOwn(TASK_TYPES, type) ? TASK_TYPES[type] : null
   if (!taskType) return false
   const plant = await db
-    .prepare('SELECT id FROM plants WHERE id = ?')
+    .prepare('SELECT * FROM plants WHERE id = ?')
     .bind(plantId)
-    .first()
+    .first<TaskPlant>()
   if (!plant) return false
-  await db.batch(taskType.complete(db, plantId, todayInJerusalem()))
+  const today = todayInJerusalem()
+  if (done) {
+    if (!taskType.doneToday(plant, today)) {
+      await taskType.complete(db, plantId, today)
+    }
+  } else {
+    // Only today's completion can be undone, so an old one is never lost by mistake.
+    if (!taskType.doneToday(plant, today)) return false
+    await taskType.undo(db, plantId, today)
+  }
   return true
 }
