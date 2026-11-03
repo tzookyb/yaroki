@@ -65,7 +65,7 @@ const MIN_PASSWORD_LENGTH = import.meta.env.DEV ? 1 : 20
 // After this many failed logins in one UTC day, every login is refused until the next day.
 // Two such days in a row sign out every device and lock login until the lockout row is
 // deleted from the Cloudflare dashboard.
-const DAILY_FAILURE_CAP = 50
+const DAILY_FAILURE_CAP = 20
 
 function utcDay(offsetDays = 0) {
   return new Date(Date.now() + offsetDays * 86_400_000).toISOString().slice(0, 10)
