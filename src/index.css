@@ -195,3 +195,22 @@ button.secondary {
   margin-top: 0.25rem;
   padding: 0.3rem 0.75rem;
 }
+
+.login-alert {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: #fbe3d9;
+  color: #6b1f0a;
+}
+
+.login-alert p {
+  margin: 0 0 0.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .login-alert {
+    background: #4a1f12;
+    color: #fbe3d9;
+  }
+}
