@@ -132,10 +132,9 @@ button:disabled {
   background: #f6f7f2;
   color: inherit;
   translate: -100% 0;
-  transition:
-    translate 0.2s ease-out,
-    overlay 0.2s allow-discrete,
-    display 0.2s allow-discrete;
+  /* Slides in on open only. Closing hides it at once, because an animated close
+     left the content out of place for a moment. */
+  transition: translate 0.2s ease-out;
 }
 
 .settings-menu:popover-open {
