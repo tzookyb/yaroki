@@ -101,11 +101,94 @@ button:disabled {
   padding: 0.3rem 0.75rem;
 }
 
-.page-header {
+.app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  margin: -1rem -1rem 1rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #8884;
+}
+
+.app-title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #2f6b3f;
+  text-decoration: none;
+}
+
+.settings-menu {
+  box-sizing: border-box;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0.5rem 1rem 1rem;
+  overflow-y: auto;
+  border: 0;
+  background: #f6f7f2;
+  color: inherit;
+  translate: -100% 0;
+  /* Matches DRAWER_MS in src/AppHeader.tsx. */
+  transition: translate 0.2s ease-out;
+}
+
+.settings-menu:popover-open {
+  translate: 0 0;
+}
+
+.settings-menu.closing {
+  translate: -100% 0;
+}
+
+.settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 40rem;
+  margin: 0 auto;
+}
+
+@starting-style {
+  .settings-menu:popover-open {
+    translate: -100% 0;
+  }
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.settings-header h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.settings-header .back-button {
+  padding-inline-start: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.settings-menu p,
+.settings-menu ul {
+  margin: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .app-title {
+    color: #8fc79c;
+  }
+
+  .settings-menu {
+    background: #161b17;
+  }
 }
 
 .icon-button {
@@ -114,10 +197,6 @@ button:disabled {
   color: inherit;
   font-size: 1.5rem;
   line-height: 1;
-}
-
-.icon-button[aria-pressed='true'] {
-  box-shadow: inset 0 0 0 1px #8888;
 }
 
 .inline-form {
@@ -194,4 +273,111 @@ button.secondary {
 .plant-info button {
   margin-top: 0.25rem;
   padding: 0.3rem 0.75rem;
+}
+
+.next-tasks h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+}
+
+.next-tasks ul {
+  margin: 0;
+}
+
+.task-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.5rem 0 0;
+  font-size: 0.75rem;
+  font-weight: normal;
+  opacity: 0.65;
+}
+
+.task-divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid #8884;
+}
+
+.next-tasks li.done {
+  opacity: 0.5;
+}
+
+.next-tasks li.done img {
+  filter: grayscale(1);
+}
+
+.next-tasks-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.next-tasks-header h2 {
+  margin: 0;
+}
+
+.next-tasks .link-button {
+  padding: 0;
+  background: none;
+  color: #2f6b3f;
+  font-size: 0.8125rem;
+  text-decoration: underline;
+}
+
+@media (prefers-color-scheme: dark) {
+  .next-tasks .link-button {
+    color: #8fc79c;
+  }
+}
+
+.next-tasks li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+}
+
+.next-tasks li + li {
+  border-top: 1px solid #8884;
+}
+
+.next-tasks img {
+  width: 3rem;
+  height: 3rem;
+  object-fit: cover;
+  border-radius: 0.5rem;
+}
+
+.task-info {
+  flex: 1;
+  min-width: 0;
+  text-decoration: none;
+}
+
+.task-info strong,
+.task-info span {
+  display: block;
+}
+
+.task-info span {
+  font-size: 0.875rem;
+}
+
+.next-tasks .overdue {
+  color: #b3401e;
+}
+
+.next-tasks button {
+  padding: 0.4rem 0.75rem;
+  white-space: nowrap;
+}
+
+@media (prefers-color-scheme: dark) {
+  .next-tasks .overdue {
+    color: #f0906e;
+  }
 }

@@ -17,7 +17,7 @@ One npm package. `@cloudflare/vite-plugin` runs the frontend and the Worker toge
 
 ## Status
 
-Built: password sign-in, rooms (add, rename, delete), plants (add from a photo, delete), and AI species ID on add.
+Built: password sign-in, a settings drawer behind the header cog (sign-out, rooms add/rename/delete), plants (add from a photo, delete), AI species ID on add, and a "next tasks" list on the home screen (watering only so far).
 
 The UI is Hebrew and right-to-left. Hebrew text lives directly in the components, there is no i18n layer. Gemini returns the plant's name in Hebrew, a smaller English name, and the species in Latin. `category` and `light_needs` are stored as English enum values, and `src/RoomPage.tsx` holds their Hebrew labels.
 
@@ -28,7 +28,9 @@ Planned:
 - Weekly AI care check (fertilize, repot, pests, seasonal tips) that pushes only if action is needed
 - Optional: "check my plant" photo diagnosis, Google Calendar integration
 
-The cron handlers in `worker/index.ts` are stubs. The `events` and `push_subscriptions` tables and the `last_watered` and `care_notes` columns exist but nothing uses them yet.
+The cron handlers in `worker/index.ts` are stubs. The `push_subscriptions` table and the `care_notes` column exist but nothing uses them yet.
+
+Tasks are computed from plant fields in `worker/tasks.ts`, not stored. A new task type goes in `TASK_TYPES` there, with its Hebrew labels in `src/NextTasks.tsx`. `plants.last_watered` is a `YYYY-MM-DD` date in Asia/Jerusalem, and a plant never marked as watered is due today. Marking a task done also logs a row in `events`. A task done today stays in the list, grayed, and can be undone that day only: undo deletes today's events and sets `last_watered` back to the latest earlier event.
 
 ## Commands
 
@@ -39,9 +41,14 @@ npm run deploy             # manual, pushing to GitHub does not deploy
 npm run db:migrate:local
 npm run db:migrate:remote
 npm run cf-typegen         # after changing wrangler.jsonc
+npm run db:pull-prod       # replace local D1 with prod, copy missing photos; reads prod only
 ```
 
+`db:pull-prod` also runs from the dev-only button in the header's settings menu. Its route lives in `vite.config.ts` with `apply: 'serve'`, so it never ships. Keep the script's `--remote` calls read-only (`d1 export`, `r2 object get`).
+
 On Idan's Mac, Node comes from fnm and is missing from non-interactive shells. Prefix commands with `export PATH="$HOME/.local/share/fnm/node-versions/v26.13.0/installation/bin:$PATH"`.
+
+In `npm run dev` the favicon is yellow instead of green (`src/main.tsx`). Prod builds keep the green one.
 
 The phone can't reach the Mac over home Wi-Fi, so phone testing goes through the deployed URL.
 

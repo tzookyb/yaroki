@@ -8,6 +8,7 @@ import {
   type Plant,
   type RoomDetails,
 } from './api'
+import { ROOMS_CHANGED } from './ManageRooms'
 import { resizePhoto } from './photo'
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -42,9 +43,14 @@ function RoomPage({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    getRoom(id)
-      .then(setRoom)
-      .catch(() => setError('לא הצלחנו לטעון את החדר.'))
+    function load() {
+      getRoom(id)
+        .then(setRoom)
+        .catch(() => setError('לא הצלחנו לטעון את החדר.'))
+    }
+    load()
+    window.addEventListener(ROOMS_CHANGED, load)
+    return () => window.removeEventListener(ROOMS_CHANGED, load)
   }, [id])
 
   async function identify(plantId: number) {

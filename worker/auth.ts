@@ -1,4 +1,5 @@
 const COOKIE_NAME = 'session'
+const CLEAR_COOKIE = `${COOKIE_NAME}=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Strict`
 const COOKIE_MAX_AGE_SECONDS = 365 * 24 * 60 * 60
 
 const encoder = new TextEncoder()
@@ -31,6 +32,17 @@ async function sessionToken(password: string) {
   ).join('')
 }
 
+export function signOut() {
+  return Response.json(
+    { ok: true },
+    {
+      headers: {
+        'Set-Cookie': CLEAR_COOKIE,
+      },
+    },
+  )
+}
+
 // Both checks fail when APP_PASSWORD is unset, so a missing secret locks the API.
 export async function isSignedIn(request: Request, env: Env) {
   if (!env.APP_PASSWORD) return false
@@ -53,7 +65,7 @@ export function signOutResponse() {
     {
       status: 401,
       headers: {
-        'Set-Cookie': `${COOKIE_NAME}=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Strict`,
+        'Set-Cookie': CLEAR_COOKIE,
       },
     },
   )
