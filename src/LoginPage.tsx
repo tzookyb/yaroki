@@ -32,7 +32,7 @@ function LoginPage({ onSignIn }: { onSignIn: () => void }) {
 
   return (
     <>
-      <h1>מעקב צמחים</h1>
+      <h1>Yaroki</h1>
       {error && <p role="alert">{error}</p>}
       <form className="inline-form" onSubmit={handleSubmit}>
         <input
