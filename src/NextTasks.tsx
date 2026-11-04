@@ -12,7 +12,6 @@ import { ROOMS_CHANGED } from './ManageRooms'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
-// Add a label here for each task type in worker/tasks.ts.
 const TASK_LABELS: Record<string, { action: string; done: string }> = {
   water: { action: 'להשקות', done: 'השקיתי ✓' },
 }

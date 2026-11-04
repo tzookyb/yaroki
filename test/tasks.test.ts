@@ -26,7 +26,6 @@ async function wateringCount(plantId: number) {
     .first<number>('count')
 }
 
-// Shifts a YYYY-MM-DD date by whole days.
 function shiftDate(date: string, days: number) {
   const time = Date.parse(`${date}T00:00:00Z`) + days * 86_400_000
   return new Date(time).toISOString().slice(0, 10)

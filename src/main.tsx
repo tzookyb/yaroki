@@ -25,7 +25,6 @@ if (import.meta.env.DEV) {
     ?.setAttribute('href', `data:image/svg+xml,${encodeURIComponent(svg)}`)
 }
 
-// Sentry's ErrorBoundary is a normal React error boundary, and also reports the error when Sentry is on.
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Sentry.ErrorBoundary fallback={<ErrorFallback />}>

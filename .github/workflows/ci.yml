@@ -18,7 +18,6 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      # Format, lint and build. The same command works locally.
       - run: npm run check
 
   # Runs only after a merge to main, and only when the checks pass.

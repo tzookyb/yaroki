@@ -56,7 +56,6 @@ const handler = {
   },
 } satisfies ExportedHandler<Env>
 
-// Sentry stays off until the SENTRY_DSN secret is set. It also reports cron failures.
 export default Sentry.withSentry(
   (env: Env) => ({
     dsn: env.SENTRY_DSN || undefined,
