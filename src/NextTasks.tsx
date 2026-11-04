@@ -6,6 +6,8 @@ import {
   type Task,
   type TaskList,
 } from './api'
+import { dueTaskCount } from '../shared/taskBadge'
+import { setAppBadge } from './appBadge'
 import { ROOMS_CHANGED } from './ManageRooms'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -152,6 +154,15 @@ function NextTasks() {
       ]).catch(() => setError('לא הצלחנו לטעון את המשימות.')),
     [drawerOpen],
   )
+
+  const badgeCount = list ? dueTaskCount(list) : undefined
+
+  // Keep the app icon badge in step with the list.
+  useEffect(() => {
+    if (badgeCount !== undefined) {
+      setAppBadge(badgeCount)
+    }
+  }, [badgeCount])
 
   useEffect(() => {
     load()
