@@ -381,3 +381,22 @@ button.secondary {
     color: #f0906e;
   }
 }
+
+.count-badge {
+  display: inline-block;
+  min-width: 1.5rem;
+  margin-inline-start: 0.5rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: #2f6b3f;
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.next-tasks .count-badge.overdue {
+  background: #e8710a;
+  color: #fff;
+}

@@ -6,6 +6,8 @@ import {
   type Task,
   type TaskList,
 } from './api'
+import { taskBadge } from '../shared/taskBadge'
+import { setAppBadge } from './appBadge'
 import { ROOMS_CHANGED } from './ManageRooms'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -153,6 +155,16 @@ function NextTasks() {
     [drawerOpen],
   )
 
+  const badge = list ? taskBadge(list) : null
+  const badgeCount = badge?.count
+
+  // Keep the app icon badge in step with the list.
+  useEffect(() => {
+    if (badgeCount !== undefined) {
+      setAppBadge(badgeCount)
+    }
+  }, [badgeCount])
+
   useEffect(() => {
     load()
     window.addEventListener(ROOMS_CHANGED, load)
@@ -188,7 +200,19 @@ function NextTasks() {
     <>
       <section className="next-tasks">
         <div className="next-tasks-header">
-          <h2>המשימות הבאות</h2>
+          <h2>
+            המשימות הבאות
+            {badge && badge.count > 0 && (
+              <span
+                className={
+                  badge.overdue ? 'count-badge overdue' : 'count-badge'
+                }
+                aria-label={`${badge.count} משימות פתוחות`}
+              >
+                {badge.count}
+              </span>
+            )}
+          </h2>
           <button
             type="button"
             className="link-button"
