@@ -1,6 +1,5 @@
 import { env, exports } from 'cloudflare:workers'
 
-// Calls the Worker the same way the app does, with an optional session cookie.
 export function api(path: string, init: RequestInit = {}, session?: string) {
   const headers = new Headers(init.headers)
   if (session) {

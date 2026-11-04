@@ -88,7 +88,6 @@ export async function signIn(request: Request, env: Env, password: string) {
   )
 }
 
-// Signs out this device only.
 export async function signOut(request: Request, env: Env) {
   const token = readSessionToken(request)
   if (token) {

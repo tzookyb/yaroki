@@ -1,4 +1,3 @@
-// Shown instead of a blank screen when the app crashes while rendering.
 function ErrorFallback() {
   return (
     <main>

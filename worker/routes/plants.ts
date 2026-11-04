@@ -82,7 +82,6 @@ export const plantRoutes = createApp()
     return c.json(updated)
   })
 
-  // POST marks a task done, DELETE undoes today's completion.
   .on(
     ['POST', 'DELETE'],
     '/:id/tasks/:type/done',
