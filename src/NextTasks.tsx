@@ -6,7 +6,7 @@ import {
   type Task,
   type TaskList,
 } from './api'
-import { taskBadge } from '../shared/taskBadge'
+import { dueTaskCount } from '../shared/taskBadge'
 import { setAppBadge } from './appBadge'
 import { ROOMS_CHANGED } from './ManageRooms'
 
@@ -155,8 +155,7 @@ function NextTasks() {
     [drawerOpen],
   )
 
-  const badge = list ? taskBadge(list) : null
-  const badgeCount = badge?.count
+  const badgeCount = list ? dueTaskCount(list) : undefined
 
   // Keep the app icon badge in step with the list.
   useEffect(() => {
@@ -200,19 +199,7 @@ function NextTasks() {
     <>
       <section className="next-tasks">
         <div className="next-tasks-header">
-          <h2>
-            המשימות הבאות
-            {badge && badge.count > 0 && (
-              <span
-                className={
-                  badge.overdue ? 'count-badge overdue' : 'count-badge'
-                }
-                aria-label={`${badge.count} משימות פתוחות`}
-              >
-                {badge.count}
-              </span>
-            )}
-          </h2>
+          <h2>המשימות הבאות</h2>
           <button
             type="button"
             className="link-button"
