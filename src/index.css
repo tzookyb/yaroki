@@ -817,6 +817,17 @@ form.room-profile {
   background: var(--surface);
 }
 
+.next-tasks li {
+  flex-wrap: wrap;
+}
+
+.skip-reasons {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .next-tasks li:not(:has(img)) {
   padding-inline-start: 1.1rem;
 }

@@ -3,9 +3,13 @@ import {
   getTasks,
   photoUrl,
   setTaskDone,
+  skipTask,
+  unskipTask,
+  type SkipReason,
   type Task,
   type TaskList,
 } from './api'
+import { SKIP_REASONS } from '../shared/api'
 import { dueTaskCount } from '../shared/taskBadge'
 import { setAppBadge } from './appBadge'
 import { ROOMS_CHANGED } from './ManageRooms'
@@ -14,6 +18,13 @@ const DAY_MS = 24 * 60 * 60 * 1000
 
 const TASK_LABELS: Record<string, { action: string; done: string }> = {
   water: { action: 'להשקות', done: 'השקיתי ✓' },
+}
+
+const SKIP_LABELS: Record<SkipReason, string> = {
+  wet_soil: 'האדמה עדיין רטובה',
+  dormant: 'הצמח במנוחה',
+  away: 'לא הייתי בבית',
+  other: 'סיבה אחרת',
 }
 
 const GROUP_LABELS = {
@@ -75,9 +86,11 @@ type TaskGroupsProps = {
   list: TaskList
   busy: string[]
   onDone: (task: Task, done: boolean) => void
+  onSkip: (task: Task, reason: SkipReason | null) => void
 }
 
-function TaskGroups({ list, busy, onDone }: TaskGroupsProps) {
+function TaskGroups({ list, busy, onDone, onSkip }: TaskGroupsProps) {
+  const [choosing, setChoosing] = useState<string | null>(null)
   const groups = new Map<Group, Task[]>()
   for (const task of list.tasks) {
     const group = groupOf(task, list.today)
@@ -107,7 +120,14 @@ function TaskGroups({ list, busy, onDone }: TaskGroupsProps) {
                     {labels?.action ?? task.type} את {task.plant_name ?? 'הצמח'}
                   </strong>
                   <span className={group === 'overdue' ? 'overdue' : 'muted'}>
-                    {[label, task.room_name].filter(Boolean).join(' · ')}
+                    {[
+                      label,
+                      task.skip_reason &&
+                        `נדחה: ${SKIP_LABELS[task.skip_reason]}`,
+                      task.room_name,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
                   </span>
                 </a>
                 {task.done_today ? (
@@ -120,13 +140,59 @@ function TaskGroups({ list, busy, onDone }: TaskGroupsProps) {
                     ביטול
                   </button>
                 ) : (
-                  <button
-                    type="button"
-                    disabled={busy.includes(key)}
-                    onClick={() => onDone(task, true)}
+                  <>
+                    {task.skip_reason ? (
+                      <button
+                        type="button"
+                        className="secondary"
+                        disabled={busy.includes(key)}
+                        onClick={() => onSkip(task, null)}
+                      >
+                        ביטול דחייה
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="secondary"
+                        disabled={busy.includes(key)}
+                        aria-expanded={choosing === key}
+                        onClick={() =>
+                          setChoosing(choosing === key ? null : key)
+                        }
+                      >
+                        דילוג
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={busy.includes(key)}
+                      onClick={() => onDone(task, true)}
+                    >
+                      {labels?.done ?? 'בוצע ✓'}
+                    </button>
+                  </>
+                )}
+                {choosing === key && (
+                  <div
+                    className="skip-reasons"
+                    role="group"
+                    aria-label="סיבת הדילוג"
                   >
-                    {labels?.done ?? 'בוצע ✓'}
-                  </button>
+                    {SKIP_REASONS.map((reason) => (
+                      <button
+                        key={reason}
+                        type="button"
+                        className="secondary"
+                        disabled={busy.includes(key)}
+                        onClick={() => {
+                          setChoosing(null)
+                          onSkip(task, reason)
+                        }}
+                      >
+                        {SKIP_LABELS[reason]}
+                      </button>
+                    ))}
+                  </div>
                 )}
               </li>
             )
@@ -190,6 +256,20 @@ function NextTasks() {
     }
   }
 
+  async function handleSkip(task: Task, reason: SkipReason | null) {
+    const key = taskKey(task)
+    setBusy((current) => [...current, key])
+    setError(null)
+    try {
+      await (reason ? skipTask(task, reason) : unskipTask(task))
+    } catch {
+      setError('לא הצלחנו לעדכן את המשימה.')
+    } finally {
+      await load()
+      setBusy((current) => current.filter((other) => other !== key))
+    }
+  }
+
   if (!list && !error) {
     return null
   }
@@ -211,7 +291,14 @@ function NextTasks() {
         {list?.tasks.length === 0 && (
           <p className="muted">אין משימות להיום ולמחר.</p>
         )}
-        {list && <TaskGroups list={list} busy={busy} onDone={handleDone} />}
+        {list && (
+          <TaskGroups
+            list={list}
+            busy={busy}
+            onDone={handleDone}
+            onSkip={handleSkip}
+          />
+        )}
       </section>
       <div
         id="all-tasks"
@@ -242,7 +329,12 @@ function NextTasks() {
           {allList?.tasks.length === 0 && <p className="muted">אין משימות.</p>}
           {allList && (
             <div className="next-tasks">
-              <TaskGroups list={allList} busy={busy} onDone={handleDone} />
+              <TaskGroups
+                list={allList}
+                busy={busy}
+                onDone={handleDone}
+                onSkip={handleSkip}
+              />
             </div>
           )}
         </div>

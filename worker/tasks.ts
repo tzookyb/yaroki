@@ -1,4 +1,4 @@
-import type { Task, TaskList } from '../shared/api'
+import type { SkipReason, Task, TaskList } from '../shared/api'
 
 // Care tasks are computed from plant fields, not stored. A new task type adds an entry to TASK_TYPES.
 // Each plant has at most one task of each type.
@@ -77,6 +77,23 @@ const TASK_TYPES: Record<string, TaskType> = {
   },
 }
 
+// Days a skip postpones the task. Wet soil needs time to dry, a resting plant needs much longer,
+// and the others only move the task to tomorrow.
+const SKIP_DAYS: Record<SkipReason, number> = {
+  wet_soil: 3,
+  dormant: 7,
+  away: 1,
+  other: 1,
+}
+
+type Skip = {
+  plant_id: number
+  type: string
+  reason: SkipReason
+  skipped_on: string
+  until: string
+}
+
 // en-CA formats as YYYY-MM-DD.
 const dateFormat = new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE })
 
@@ -110,12 +127,28 @@ export async function getTasks(
     )
     .all<TaskPlant>()
 
+  const { results: skipRows } = await db
+    .prepare('SELECT plant_id, type, reason, skipped_on, until FROM task_skips')
+    .all<Skip>()
+  const skips = new Map(
+    skipRows.map((skip) => [`${skip.plant_id}-${skip.type}`, skip]),
+  )
+
   const tasks: Task[] = []
   for (const plant of plants) {
     for (const [type, taskType] of Object.entries(TASK_TYPES)) {
-      const dueDate = taskType.dueDate(plant, today)
+      let dueDate = taskType.dueDate(plant, today)
       if (!dueDate) {
         continue
+      }
+      // A skip only counts until the plant is cared for again, and only if it moves the date later.
+      const skip = skips.get(`${plant.id}-${type}`)
+      const skipped =
+        skip !== undefined &&
+        skip.until > dueDate &&
+        (!plant.last_watered || skip.skipped_on > plant.last_watered)
+      if (skipped) {
+        dueDate = skip.until
       }
       const doneToday = taskType.doneToday(plant, today)
       if (!all && !doneToday && dueDate > tomorrow) {
@@ -130,6 +163,7 @@ export async function getTasks(
         room_name: plant.room_name,
         due_date: dueDate,
         done_today: doneToday,
+        skip_reason: skipped ? skip.reason : null,
       })
     }
   }
@@ -172,6 +206,44 @@ export async function setTaskDone(
       return false
     }
     await taskType.undo(db, plantId, today)
+  }
+  return true
+}
+
+// Postpones a task for the reason's number of days, or brings it back when `reason` is null.
+// Returns false when the task type or the plant does not exist, or the task is already done today.
+export async function setTaskSkipped(
+  db: D1Database,
+  type: string,
+  plantId: number,
+  reason: SkipReason | null,
+) {
+  const taskType = Object.hasOwn(TASK_TYPES, type) ? TASK_TYPES[type] : null
+  if (!taskType) {
+    return false
+  }
+  const plant = await db
+    .prepare('SELECT * FROM plants WHERE id = ?')
+    .bind(plantId)
+    .first<TaskPlant>()
+  const today = todayInJerusalem()
+  if (!plant || taskType.doneToday(plant, today)) {
+    return false
+  }
+  const remove = db
+    .prepare('DELETE FROM task_skips WHERE plant_id = ? AND type = ?')
+    .bind(plantId, type)
+  if (reason === null) {
+    await remove.run()
+  } else {
+    await db.batch([
+      remove,
+      db
+        .prepare(
+          'INSERT INTO task_skips (plant_id, type, reason, skipped_on, until) VALUES (?, ?, ?, ?, ?)',
+        )
+        .bind(plantId, type, reason, today, addDays(today, SKIP_DAYS[reason])),
+    ])
   }
   return true
 }

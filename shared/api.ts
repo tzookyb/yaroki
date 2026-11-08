@@ -63,6 +63,10 @@ export type RoomDetails = Omit<Room, 'plant_count'> & {
   plants: Plant[]
 }
 
+// Why a task was skipped. How long each one postpones the task is decided in worker/tasks.ts.
+export const SKIP_REASONS = ['wet_soil', 'dormant', 'away', 'other'] as const
+export type SkipReason = (typeof SKIP_REASONS)[number]
+
 export type Task = {
   type: string
   plant_id: number
@@ -73,6 +77,8 @@ export type Task = {
   // YYYY-MM-DD in Asia/Jerusalem. For a task done today, this is the next due date.
   due_date: string
   done_today: boolean
+  // Set while the task is postponed by a skip. `due_date` is then the day it comes back.
+  skip_reason: SkipReason | null
 }
 
 export type TaskList = {
