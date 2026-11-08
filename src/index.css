@@ -762,15 +762,45 @@ form.room-profile {
 
 .fit {
   font-size: 0.8125rem;
+  font-weight: 600;
 }
 
-.fit-ok {
+.fit-source {
+  margin-inline-start: 0.5rem;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.need-good {
+  border-inline-start: 3px solid var(--accent);
+}
+
+.need-good .fit {
   color: var(--accent);
 }
 
-.fit-low,
-.fit-high {
+.need-warn {
+  border-inline-start: 3px solid var(--warn);
+}
+
+.need-warn .fit {
   color: var(--warn);
+}
+
+.need-bad {
+  border-inline-start: 3px solid var(--danger);
+}
+
+.need-bad .fit {
+  color: var(--danger);
+}
+
+.need-unknown {
+  border-inline-start: 3px solid var(--muted);
+}
+
+.need-unknown .fit {
+  color: var(--muted);
 }
 
 /* Next tasks */
