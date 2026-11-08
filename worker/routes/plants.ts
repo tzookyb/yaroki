@@ -35,7 +35,21 @@ export const plantRoutes = createApp()
           .bind(plant.room_id)
           .first<RoomProfile>()
       : null
-    const details: PlantDetails = { ...plant, room }
+    // Old readings (a broken sensor, a room switched to outdoor) say nothing about now.
+    const latestReading = plant.room_id
+      ? await c.env.DB.prepare(
+          `SELECT temperature, humidity FROM room_readings
+           WHERE room_id = ? AND measured_at >= date('now', '-3 days')
+           ORDER BY measured_at DESC LIMIT 1`,
+        )
+          .bind(plant.room_id)
+          .first<NonNullable<PlantDetails['latest_reading']>>()
+      : null
+    const details: PlantDetails = {
+      ...plant,
+      room,
+      latest_reading: latestReading,
+    }
     return c.json(details)
   })
 
