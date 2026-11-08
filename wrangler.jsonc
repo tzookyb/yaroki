@@ -35,8 +35,9 @@
     },
   ],
   "triggers": {
-    // Cron runs in UTC. 06:00 UTC is 08:00/09:00 in Asia/Jerusalem.
+    // Cron runs in UTC. The hourly run sends the watering reminder at the learned hour,
+    // and does the once-a-day jobs at 06:00 UTC (08:00/09:00 in Asia/Jerusalem).
     // Keep in sync with the switch in worker/index.ts.
-    "crons": ["0 6 * * *", "0 7 * * SUN", "0 */3 * * *"],
+    "crons": ["0 * * * *", "0 7 * * SUN", "0 */3 * * *"],
   },
 }

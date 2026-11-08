@@ -372,6 +372,25 @@ describe('tasks API', () => {
     expect((await api(path, { method: 'DELETE' }, session)).status).toBe(404)
   })
 
+  it('skips a task with a reason and undoes the skip', async () => {
+    const plant = await addPlant({ water_every_days: 3 })
+    const path = `/plants/${plant}/tasks/water/skip`
+    expect(
+      (await api(path, json({ reason: 'wet_soil' }), session)).status,
+    ).toBe(204)
+    expect((await api(path, { method: 'DELETE' }, session)).status).toBe(204)
+  })
+
+  it('refuses an unknown skip reason', async () => {
+    const plant = await addPlant({ water_every_days: 3 })
+    const response = await api(
+      `/plants/${plant}/tasks/water/skip`,
+      json({ reason: 'bored' }),
+      session,
+    )
+    expect(response.status).toBe(400)
+  })
+
   it('refuses a task type with odd characters', async () => {
     const plant = await addPlant({ water_every_days: 3 })
     const response = await api(

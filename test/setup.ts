@@ -8,6 +8,7 @@ await applyD1Migrations(env.DB, env.TEST_MIGRATIONS)
 beforeEach(async () => {
   await env.DB.batch(
     [
+      'task_skips',
       'events',
       'plants',
       'home_location',
@@ -16,6 +17,7 @@ beforeEach(async () => {
       'rooms',
       'sessions',
       'push_subscriptions',
+      'reminder_schedule',
     ].map((table) => env.DB.prepare(`DELETE FROM ${table}`)),
   )
 })

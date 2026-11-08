@@ -9,8 +9,8 @@ import { createApp, validate } from '../app'
 import { enrichPlant } from '../enrich'
 import { identifyPlant } from '../gemini'
 import { findReferenceImage } from '../wikipedia'
-import { idParam } from '../schemas'
-import { setTaskDone } from '../tasks'
+import { idParam, skipBody } from '../schemas'
+import { setTaskDone, setTaskSkipped } from '../tasks'
 
 const taskParam = idParam.extend({ type: z.string().regex(/^\w+$/) })
 
@@ -167,3 +167,25 @@ export const plantRoutes = createApp()
       return c.body(null, 204)
     },
   )
+
+  .post(
+    '/:id/tasks/:type/skip',
+    validate('param', taskParam),
+    validate('json', skipBody),
+    async (c) => {
+      const { id, type } = c.req.valid('param')
+      const { reason } = c.req.valid('json')
+      if (!(await setTaskSkipped(c.env.DB, type, id, reason))) {
+        return c.json({ error: 'Task not found' }, 404)
+      }
+      return c.body(null, 204)
+    },
+  )
+
+  .delete('/:id/tasks/:type/skip', validate('param', taskParam), async (c) => {
+    const { id, type } = c.req.valid('param')
+    if (!(await setTaskSkipped(c.env.DB, type, id, null))) {
+      return c.json({ error: 'Task not found' }, 404)
+    }
+    return c.body(null, 204)
+  })

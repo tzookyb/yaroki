@@ -289,3 +289,42 @@ function cleanTemperatures(min: unknown, max: unknown) {
 function clampTemperature(value: number) {
   return Math.min(ROOM_TEMP_MAX, Math.max(ROOM_TEMP_MIN, Math.round(value)))
 }
+
+const HOUR_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    hour: { type: 'INTEGER', minimum: 0, maximum: 23 },
+  },
+  required: ['hour'],
+}
+
+// The hour to send the daily watering reminder, from when the owner usually marks plants as watered.
+// Returns null when the answer is unusable. The caller keeps the result inside its own limits.
+export async function suggestReminderHour(
+  facts: {
+    hoursByCount: number[]
+    weekdaysByCount: number[]
+    currentHour: number
+  },
+  apiKey: string,
+): Promise<number | null> {
+  const answer = await askGemini(
+    [
+      {
+        text: `A house plant owner in Israel gets one daily phone reminder to water plants. Times are in local time.
+hoursByCount[h] is how many times they marked a watering done in hour h (0-23). weekdaysByCount[d] is the same for the day of the week, 0 = Sunday.
+Pick the hour (0-23) to send the reminder so it arrives just before or when they usually do the watering, not after. The reminder is currently sent at ${facts.currentHour}:00.
+${JSON.stringify({ hoursByCount: facts.hoursByCount, weekdaysByCount: facts.weekdaysByCount })}`,
+      },
+    ],
+    HOUR_SCHEMA,
+    apiKey,
+  )
+  const hour = answer.hour
+  return typeof hour === 'number' &&
+    Number.isInteger(hour) &&
+    hour >= 0 &&
+    hour <= 23
+    ? hour
+    : null
+}

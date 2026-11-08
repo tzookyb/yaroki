@@ -8,6 +8,7 @@ import type {
   RoomDetails,
   RoomProfile,
   SensiboDevice,
+  SkipReason,
   Task,
   TaskList,
 } from '../shared/api'
@@ -22,6 +23,7 @@ export type {
   RoomDetails,
   RoomProfile,
   SensiboDevice,
+  SkipReason,
   Task,
   TaskList,
 } from '../shared/api'
@@ -144,6 +146,20 @@ export function getTasks(all: boolean) {
 export function setTaskDone(task: Task, done: boolean) {
   return send(`/api/plants/${task.plant_id}/tasks/${task.type}/done`, {
     method: done ? 'POST' : 'DELETE',
+  })
+}
+
+export function skipTask(task: Task, reason: SkipReason) {
+  return send(`/api/plants/${task.plant_id}/tasks/${task.type}/skip`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason }),
+  })
+}
+
+export function unskipTask(task: Task) {
+  return send(`/api/plants/${task.plant_id}/tasks/${task.type}/skip`, {
+    method: 'DELETE',
   })
 }
 
