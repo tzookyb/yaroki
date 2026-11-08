@@ -1,4 +1,9 @@
-import type { ClimateWeek, RoomClimate, SensiboDevice } from '../../shared/api'
+import type {
+  ClimatePoint,
+  ClimateResolution,
+  RoomClimate,
+  SensiboDevice,
+} from '../../shared/api'
 import { createApp, validate } from '../app'
 import { searchPlaces } from '../places'
 import { WEATHER_SOURCE, backfillWeather } from '../readings'
@@ -12,28 +17,67 @@ import {
   sensorParam,
 } from '../schemas'
 
-const GRAPH_YEARS = 3
+const DAY = 86400
+// Up to this long a span of this year's data is drawn reading by reading, then daily averages, then weekly.
+const RAW_MAX_DAYS = 3
+const DAILY_MAX_DAYS = 90
 
 function round(value: number | null) {
   return value === null ? null : Math.round(value * 10) / 10
 }
 
+function yearStart(year: number) {
+  return Date.UTC(year, 0, 1) / 1000
+}
+
+function bucketSql(resolution: ClimateResolution) {
+  if (resolution === 'raw') {
+    return { time: "CAST(strftime('%s', measured_at) AS INTEGER)", group: 'id' }
+  }
+  const key =
+    resolution === 'day'
+      ? "strftime('%Y-%m-%d', measured_at)"
+      : "strftime('%Y-%W', measured_at)"
+  return {
+    time: "CAST(AVG(strftime('%s', measured_at)) AS INTEGER)",
+    group: key,
+  }
+}
+
 export const climateRoutes = createApp()
   .get('/rooms/:id', validate('param', idParam), async (c) => {
     const { id } = c.req.valid('param')
-    const [weeks, latest, sensors] = await Promise.all([
+    const year = new Date().getUTCFullYear()
+    const thisStart = yearStart(year)
+    const prevStart = yearStart(year - 1)
+    const span = await c.env.DB.prepare(
+      `SELECT MIN(CAST(strftime('%s', measured_at) AS INTEGER)) AS first,
+              MAX(CAST(strftime('%s', measured_at) AS INTEGER)) AS last
+       FROM room_readings WHERE room_id = ? AND measured_at >= ?`,
+    )
+      .bind(id, `${year}-01-01`)
+      .first<{ first: number | null; last: number | null }>()
+    const days =
+      span?.first != null && span.last != null
+        ? (span.last - span.first) / DAY
+        : 0
+    const resolution: ClimateResolution =
+      days <= RAW_MAX_DAYS ? 'raw' : days <= DAILY_MAX_DAYS ? 'day' : 'week'
+    const { time, group } = bucketSql(resolution)
+    // Last year is shifted into this year, so both lines share one time axis.
+    const series = (from: string, to: string, shift: number) =>
       c.env.DB.prepare(
-        `SELECT CAST(strftime('%Y', measured_at) AS INTEGER) AS year,
-                CAST(strftime('%W', measured_at) AS INTEGER) AS week,
-                AVG(temperature) AS temperature,
-                AVG(humidity) AS humidity
+        `SELECT ${time} + ? AS t, AVG(temperature) AS temperature, AVG(humidity) AS humidity
          FROM room_readings
-         WHERE room_id = ? AND measured_at >= date('now', ?)
-         GROUP BY year, week
-         ORDER BY year, week`,
+         WHERE room_id = ? AND measured_at >= ? AND measured_at < ?
+         GROUP BY ${group}
+         ORDER BY t`,
       )
-        .bind(id, `-${GRAPH_YEARS} years`)
-        .all<ClimateWeek>(),
+        .bind(shift, id, from, to)
+        .all<ClimatePoint>()
+    const [current, previous, latest, sensors] = await Promise.all([
+      series(`${year}-01-01`, `${year + 1}-01-01`, 0),
+      series(`${year - 1}-01-01`, `${year}-01-01`, thisStart - prevStart),
       c.env.DB.prepare(
         `SELECT temperature, humidity, measured_at FROM room_readings
          WHERE room_id = ? ORDER BY measured_at DESC LIMIT 1`,
@@ -46,13 +90,18 @@ export const climateRoutes = createApp()
         .bind(id)
         .first<number>('count'),
     ])
+    const clean = (points: ClimatePoint[]) =>
+      points.map((p) => ({
+        t: p.t,
+        temperature: round(p.temperature) ?? 0,
+        humidity: round(p.humidity),
+      }))
     const body: RoomClimate = {
       sensor_count: sensors ?? 0,
-      weeks: weeks.results.map((w) => ({
-        ...w,
-        temperature: round(w.temperature) ?? 0,
-        humidity: round(w.humidity),
-      })),
+      year,
+      resolution,
+      current: clean(current.results),
+      previous: clean(previous.results),
       latest,
     }
     return c.json(body)

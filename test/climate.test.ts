@@ -1,3 +1,4 @@
+import type { RoomClimate } from '../shared/api'
 import { env } from 'cloudflare:workers'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { collectReadings } from '../worker/readings'
@@ -283,13 +284,10 @@ describe('room location and climate', () => {
     ).toBe(404)
   })
 
-  it('averages readings by year and week, with the latest reading', async () => {
-    const roomId = await addRoom()
-    const rows: [string, number, number | null][] = [
-      ['2025-01-06 08:00:00', 10, 50],
-      ['2025-01-07 08:00:00', 12, null],
-      ['2026-01-05 08:00:00', 20, 40],
-    ]
+  async function insert(
+    roomId: number,
+    rows: [string, number, number | null][],
+  ) {
     for (const [at, temp, humidity] of rows) {
       await env.DB.prepare(
         "INSERT INTO room_readings (room_id, source_id, measured_at, temperature, humidity) VALUES (?, 's', ?, ?, ?)",
@@ -297,28 +295,80 @@ describe('room location and climate', () => {
         .bind(roomId, at, temp, humidity)
         .run()
     }
+  }
 
-    const response = await api(`/climate/rooms/${roomId}`, {}, session)
-    expect(await response.json()).toEqual({
+  const at = (iso: string) => Date.parse(`${iso}Z`) / 1000
+
+  it('returns single readings while this year has little data, with last year shifted onto this year', async () => {
+    vi.useFakeTimers({
+      toFake: ['Date'],
+      now: new Date('2026-11-08T12:00:00Z'),
+    })
+    const roomId = await addRoom()
+    await insert(roomId, [
+      ['2025-11-08 08:00:00', 10, 50],
+      ['2026-11-08 08:00:00', 20, 40],
+      ['2026-11-08 09:00:00', 22, null],
+    ])
+
+    const body = (await (
+      await api(`/climate/rooms/${roomId}`, {}, session)
+    ).json()) as RoomClimate
+    expect(body).toEqual({
       sensor_count: 0,
-      weeks: [
-        { year: 2025, week: 1, temperature: 11, humidity: 50 },
-        { year: 2026, week: 1, temperature: 20, humidity: 40 },
+      year: 2026,
+      resolution: 'raw',
+      current: [
+        { t: at('2026-11-08T08:00:00'), temperature: 20, humidity: 40 },
+        { t: at('2026-11-08T09:00:00'), temperature: 22, humidity: null },
+      ],
+      previous: [
+        { t: at('2026-11-08T08:00:00'), temperature: 10, humidity: 50 },
       ],
       latest: {
-        temperature: 20,
-        humidity: 40,
-        measured_at: '2026-01-05 08:00:00',
+        temperature: 22,
+        humidity: null,
+        measured_at: '2026-11-08 09:00:00',
       },
     })
+    vi.useRealTimers()
   })
 
-  it('returns no weeks and no latest for a room without readings', async () => {
+  it('averages by day, then by week, as this year fills up', async () => {
+    vi.useFakeTimers({
+      toFake: ['Date'],
+      now: new Date('2026-11-08T12:00:00Z'),
+    })
+    const roomId = await addRoom()
+    await insert(roomId, [
+      ['2026-11-01 06:00:00', 10, null],
+      ['2026-11-01 18:00:00', 14, null],
+      ['2026-11-08 12:00:00', 20, null],
+    ])
+    let body = (await (
+      await api(`/climate/rooms/${roomId}`, {}, session)
+    ).json()) as RoomClimate
+    expect(body.resolution).toBe('day')
+    expect(
+      body.current.map((p: { temperature: number }) => p.temperature),
+    ).toEqual([12, 20])
+
+    await insert(roomId, [['2026-04-01 12:00:00', 16, null]])
+    body = (await (
+      await api(`/climate/rooms/${roomId}`, {}, session)
+    ).json()) as RoomClimate
+    expect(body.resolution).toBe('week')
+    expect(body.current).toHaveLength(3)
+    vi.useRealTimers()
+  })
+
+  it('returns no points and no latest for a room without readings', async () => {
     const roomId = await addRoom()
     const response = await api(`/climate/rooms/${roomId}`, {}, session)
-    expect(await response.json()).toEqual({
+    expect(await response.json()).toMatchObject({
       sensor_count: 0,
-      weeks: [],
+      current: [],
+      previous: [],
       latest: null,
     })
   })

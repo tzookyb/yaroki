@@ -93,10 +93,11 @@ export type TaskList = {
   tasks: Task[]
 }
 
-export type ClimateWeek = {
-  year: number
-  // Week of the year, 0 to 53, counting from the first Monday as SQLite's %W does.
-  week: number
+export type ClimateResolution = 'raw' | 'day' | 'week'
+
+export type ClimatePoint = {
+  // Unix seconds. Last year's points are shifted a year forward to share this year's axis.
+  t: number
   temperature: number
   humidity: number | null
 }
@@ -104,7 +105,11 @@ export type ClimateWeek = {
 export type RoomClimate = {
   // Sensibo devices linked to the room. Most rooms have none, and then show no readings.
   sensor_count: number
-  weeks: ClimateWeek[]
+  year: number
+  // Chosen by how much data this year has: single readings, daily averages, then weekly averages.
+  resolution: ClimateResolution
+  current: ClimatePoint[]
+  previous: ClimatePoint[]
   latest: {
     temperature: number
     humidity: number | null
