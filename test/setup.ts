@@ -15,6 +15,7 @@ beforeEach(async () => {
       'room_sensors',
       'rooms',
       'sessions',
+      'push_subscriptions',
     ].map((table) => env.DB.prepare(`DELETE FROM ${table}`)),
   )
 })

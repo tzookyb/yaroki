@@ -3,15 +3,17 @@ import { useRef, useState } from 'react'
 import { pullProd, signOut, signOutEverywhere } from './api'
 import HomeLocationForm from './HomeLocationForm'
 import ManageRooms from './ManageRooms'
+import PushSettings from './PushSettings'
+import { unsubscribeThisDevice } from './push'
 import RoomSettings from './RoomSettings'
 
 const DRAWER_MS = 200
 
 function AppHeader({ onSignOut }: { onSignOut: () => void }) {
   const menu = useRef<HTMLDivElement>(null)
-  const [view, setView] = useState<'menu' | 'rooms' | 'room-setup' | 'home'>(
-    'menu',
-  )
+  const [view, setView] = useState<
+    'menu' | 'rooms' | 'room-setup' | 'home' | 'push'
+  >('menu')
   const [closing, setClosing] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -25,6 +27,7 @@ function AppHeader({ onSignOut }: { onSignOut: () => void }) {
 
   async function handleSignOut() {
     setError(null)
+    await unsubscribeThisDevice()
     try {
       await signOut()
       onSignOut()
@@ -105,7 +108,9 @@ function AppHeader({ onSignOut }: { onSignOut: () => void }) {
                   ? 'ניהול חדרים'
                   : view === 'room-setup'
                     ? 'תנאי חדרים וחיישנים'
-                    : 'כתובת הבית'}
+                    : view === 'home'
+                      ? 'כתובת הבית'
+                      : 'התראות'}
               </button>
             )}
             <button
@@ -123,6 +128,8 @@ function AppHeader({ onSignOut }: { onSignOut: () => void }) {
             <RoomSettings />
           ) : view === 'home' ? (
             <HomeLocationForm />
+          ) : view === 'push' ? (
+            <PushSettings />
           ) : (
             <>
               <button
@@ -145,6 +152,13 @@ function AppHeader({ onSignOut }: { onSignOut: () => void }) {
                 onClick={() => setView('home')}
               >
                 כתובת הבית
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setView('push')}
+              >
+                התראות
               </button>
               <button
                 type="button"

@@ -127,6 +127,10 @@ describe('route guard', () => {
     ['GET', '/climate/sensors'],
     ['PUT', '/climate/sensors/abc'],
     ['GET', '/tasks'],
+    ['GET', '/push/key'],
+    ['POST', '/push/subscription'],
+    ['POST', '/push/unsubscribe'],
+    ['POST', '/push/test'],
     ['GET', '/photos/plants/x.webp'],
   ]
 

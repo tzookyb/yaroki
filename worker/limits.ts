@@ -4,3 +4,6 @@ export const MAX_PHOTO_BYTES = 2 * 1024 * 1024
 export const MAX_PLANTS = 5000
 
 export const MAX_R2_DELETE_KEYS = 1000
+
+// One owner with a few phones; the cap only stops a runaway client from filling D1.
+export const MAX_PUSH_SUBSCRIPTIONS = 20

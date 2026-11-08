@@ -5,9 +5,11 @@ import { enrichPendingPlants } from './enrich'
 import { climateRoutes } from './routes/climate'
 import { photoRoutes } from './routes/photos'
 import { plantRoutes } from './routes/plants'
+import { pushRoutes } from './routes/push'
 import { roomRoutes } from './routes/rooms'
 import { publicRoutes, requireSession, sessionRoutes } from './routes/session'
 import { taskRoutes } from './routes/tasks'
+import { sendDueReminders } from './push'
 import { collectReadings } from './readings'
 import { SENTRY_DATA_COLLECTION, scrubBreadcrumb } from '../shared/sentry'
 
@@ -24,6 +26,7 @@ const api = createApp()
   .route('/climate', climateRoutes)
   .route('/plants', plantRoutes)
   .route('/tasks', taskRoutes)
+  .route('/push', pushRoutes)
   .route('/photos', photoRoutes)
 
 const app = createApp()
@@ -50,9 +53,14 @@ const handler = {
   async scheduled(controller, env) {
     switch (controller.cron) {
       case DAILY_WATERING_CHECK:
-        // TODO: push watering reminders for plants that are due.
-        console.log('daily watering check')
-        await enrichPendingPlants(env)
+        // Independent jobs: a failure in one must not skip the other.
+        await Promise.allSettled([
+          sendDueReminders(env).catch((error) => {
+            console.error('Watering reminders failed', error)
+            Sentry.captureException(error)
+          }),
+          enrichPendingPlants(env),
+        ])
         break
       case WEEKLY_AI_CARE_CHECK:
         // TODO: run the AI care check, push only if action is needed.
