@@ -1,3 +1,5 @@
+import type { RoomProfile } from '../shared/api'
+
 // Flash-Lite, because gemini-3.8-flash took over 25 s on a plant photo in production.
 const MODEL = 'gemini-3.5-flash-lite'
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`
@@ -23,7 +25,42 @@ const MAX_WATER_EVERY_DAYS = 60
 const PROMPT = `Identify the house plant in this photo.
 Give species as the Latin botanical name, common_name as the name used in Hebrew, written in Hebrew letters, and english_name as the common name in English.
 water_every_days is how often to water it indoors, in days, for a typical home in Israel.
-If the photo does not show a plant, set is_plant to false.`
+If the photo does not show a plant, set is_plant to false.
+care_notes is one or two short sentences in Hebrew with the most useful care tip for this plant.`
+
+const MAX_CARE_NOTES_CHARS = 300
+
+const WINDOW_TEXT = {
+  north: 'a window facing north (little direct sun)',
+  east: 'a window facing east (morning sun)',
+  south: 'a window facing south (the most sun)',
+  west: 'a window facing west (strong afternoon sun)',
+  none: 'no window',
+}
+const LIGHT_TEXT = {
+  direct: 'direct sun',
+  bright_indirect: 'bright indirect light',
+  low: 'low light',
+}
+const HUMIDITY_TEXT = { dry: 'dry', normal: 'normal', humid: 'humid' }
+
+export function describeRoom(room: RoomProfile) {
+  const facts = [
+    room.window_direction && `Windows: ${WINDOW_TEXT[room.window_direction]}.`,
+    room.light_level && `Light: ${LIGHT_TEXT[room.light_level]}.`,
+    room.humidity && `Humidity: ${HUMIDITY_TEXT[room.humidity]}.`,
+    (room.temp_min !== null || room.temp_max !== null) &&
+      `Temperature: ${room.temp_min ?? '?'} to ${room.temp_max ?? '?'} °C.`,
+    room.near_draft && 'Plants here are in a draft.',
+    room.near_ac && 'An air conditioner blows or sits near the plants.',
+    room.near_heater && 'A heater is near the plants.',
+  ].filter(Boolean)
+  if (facts.length === 0) {
+    return ''
+  }
+  return `\nThe plant lives in a room with these conditions:\n${facts.join('\n')}
+Set water_every_days for these conditions. If the plant needs more or less light, humidity or warmth than the room gives, or the draft, air conditioner or heater would hurt it, start care_notes with that warning.`
+}
 
 const RESPONSE_SCHEMA = {
   type: 'OBJECT',
@@ -34,6 +71,7 @@ const RESPONSE_SCHEMA = {
     english_name: { type: 'STRING' },
     category: { type: 'STRING', enum: CATEGORIES },
     light_needs: { type: 'STRING', enum: LIGHT_NEEDS },
+    care_notes: { type: 'STRING' },
     water_every_days: {
       type: 'INTEGER',
       minimum: MIN_WATER_EVERY_DAYS,
@@ -48,6 +86,7 @@ const RESPONSE_SCHEMA = {
     'category',
     'light_needs',
     'water_every_days',
+    'care_notes',
   ],
 }
 
@@ -58,6 +97,7 @@ export type Identification = {
   category: string
   light_needs: string
   water_every_days: number
+  care_notes: string | null
 }
 
 type GeminiResponse = {
@@ -68,6 +108,7 @@ type GeminiResponse = {
 export async function identifyPlant(
   photo: ArrayBuffer,
   apiKey: string,
+  room?: RoomProfile,
 ): Promise<Identification | null> {
   const response = await fetch(API_URL, {
     method: 'POST',
@@ -77,7 +118,7 @@ export async function identifyPlant(
       contents: [
         {
           parts: [
-            { text: PROMPT },
+            { text: PROMPT + (room ? describeRoom(room) : '') },
             {
               inlineData: {
                 mimeType: 'image/webp',
@@ -124,6 +165,8 @@ export async function identifyPlant(
     category: oneOf(CATEGORIES, answer.category) ?? 'other',
     light_needs: oneOf(LIGHT_NEEDS, answer.light_needs) ?? 'medium',
     water_every_days: cleanWaterEveryDays(answer.water_every_days),
+    care_notes:
+      cleanText(answer.care_notes).slice(0, MAX_CARE_NOTES_CHARS) || null,
   }
 }
 

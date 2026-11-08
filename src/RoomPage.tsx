@@ -10,6 +10,7 @@ import {
 } from './api'
 import { ROOMS_CHANGED } from './ManageRooms'
 import { resizePhoto } from './photo'
+import RoomProfileForm from './RoomProfileForm'
 
 const CATEGORY_LABELS: Record<string, string> = {
   foliage: 'צמח עלים',
@@ -129,6 +130,13 @@ function RoomPage({ id }: { id: string }) {
       {room?.plants.length === 0 && <p>אין עדיין צמחים בחדר הזה.</p>}
       {room && (
         <>
+          <RoomProfileForm
+            roomId={room.id}
+            profile={room}
+            onSaved={(profile) =>
+              setRoom((current) => current && { ...current, ...profile })
+            }
+          />
           <ul className="plants">
             {room.plants.map(
               (plant) =>
@@ -178,6 +186,7 @@ function RoomPage({ id }: { id: string }) {
                               {LIGHT_LABELS[plant.light_needs]}
                             </span>
                           )}
+                          {plant.care_notes && <span>{plant.care_notes}</span>}
                         </>
                       ) : (
                         <button

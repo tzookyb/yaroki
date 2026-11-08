@@ -1,6 +1,20 @@
-import type { Plant, Room, RoomDetails, Task, TaskList } from '../shared/api'
+import type {
+  Plant,
+  Room,
+  RoomDetails,
+  RoomProfile,
+  Task,
+  TaskList,
+} from '../shared/api'
 
-export type { Plant, Room, RoomDetails, Task, TaskList } from '../shared/api'
+export type {
+  Plant,
+  Room,
+  RoomDetails,
+  RoomProfile,
+  Task,
+  TaskList,
+} from '../shared/api'
 
 export class HttpError extends Error {
   status: number
@@ -74,6 +88,14 @@ export function renameRoom(id: string, name: string) {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name }),
+  })
+}
+
+export function saveRoomProfile(id: number, profile: RoomProfile) {
+  return request<RoomProfile>(`/api/rooms/${id}/profile`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(profile),
   })
 }
 

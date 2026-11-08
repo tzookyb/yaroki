@@ -109,6 +109,7 @@ describe('route guard', () => {
     ['POST', '/rooms'],
     ['GET', '/rooms/1'],
     ['PATCH', '/rooms/1'],
+    ['PUT', '/rooms/1/profile'],
     ['DELETE', '/rooms/1'],
     ['POST', '/rooms/1/plants'],
     ['GET', '/plants'],

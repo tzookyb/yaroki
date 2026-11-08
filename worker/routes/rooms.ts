@@ -1,7 +1,7 @@
 import type { Plant, Room } from '../../shared/api'
 import { createApp, validate } from '../app'
 import { MAX_PHOTO_BYTES, MAX_PLANTS, MAX_R2_DELETE_KEYS } from '../limits'
-import { idParam, roomBody } from '../schemas'
+import { idParam, roomBody, roomProfileBody } from '../schemas'
 
 export const roomRoutes = createApp()
   .get('/', async (c) => {
@@ -49,6 +49,38 @@ export const roomRoutes = createApp()
         'UPDATE rooms SET name = ? WHERE id = ? RETURNING *',
       )
         .bind(c.req.valid('json').name, c.req.valid('param').id)
+        .first()
+      if (!room) {
+        return c.json({ error: 'Room not found' }, 404)
+      }
+      return c.json(room)
+    },
+  )
+
+  .put(
+    '/:id/profile',
+    validate('param', idParam),
+    validate('json', roomProfileBody),
+    async (c) => {
+      const p = c.req.valid('json')
+      const room = await c.env.DB.prepare(
+        `UPDATE rooms
+         SET window_direction = ?, light_level = ?, humidity = ?, temp_min = ?,
+             temp_max = ?, near_draft = ?, near_ac = ?, near_heater = ?
+         WHERE id = ?
+         RETURNING *`,
+      )
+        .bind(
+          p.window_direction,
+          p.light_level,
+          p.humidity,
+          p.temp_min,
+          p.temp_max,
+          p.near_draft,
+          p.near_ac,
+          p.near_heater,
+          c.req.valid('param').id,
+        )
         .first()
       if (!room) {
         return c.json({ error: 'Room not found' }, 404)

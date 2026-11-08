@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { identifyPlant } from '../worker/gemini'
+import type { RoomProfile } from '../shared/api'
+import { describeRoom, identifyPlant } from '../worker/gemini'
 
 const PHOTO = new Uint8Array([1, 2, 3]).buffer
 
@@ -11,6 +12,7 @@ const GOOD_ANSWER = {
   category: 'tree',
   light_needs: 'bright_indirect',
   water_every_days: 7,
+  care_notes: ' אור בהיר ללא שמש חמה. ',
 }
 
 // Replies to the Gemini call with `answer` as the model's JSON text. The real API is never called.
@@ -42,6 +44,39 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+const EMPTY_ROOM: RoomProfile = {
+  window_direction: null,
+  light_level: null,
+  humidity: null,
+  temp_min: null,
+  temp_max: null,
+  near_draft: 0,
+  near_ac: 0,
+  near_heater: 0,
+}
+
+describe('describeRoom', () => {
+  it('says nothing for a room with no details', () => {
+    expect(describeRoom(EMPTY_ROOM)).toBe('')
+  })
+
+  it('lists only what was filled in', () => {
+    const text = describeRoom({
+      ...EMPTY_ROOM,
+      window_direction: 'south',
+      light_level: 'low',
+      temp_min: 18,
+      near_ac: 1,
+    })
+    expect(text).toContain('facing south')
+    expect(text).toContain('low light')
+    expect(text).toContain('18 to ? °C')
+    expect(text).toContain('air conditioner')
+    expect(text).not.toContain('Humidity')
+    expect(text).not.toContain('in a draft')
+  })
+})
+
 describe('identifyPlant', () => {
   it('returns cleaned-up fields for a plant', async () => {
     mockGemini(GOOD_ANSWER)
@@ -52,6 +87,21 @@ describe('identifyPlant', () => {
       category: 'tree',
       light_needs: 'bright_indirect',
       water_every_days: 7,
+      care_notes: 'אור בהיר ללא שמש חמה.',
+    })
+  })
+
+  it('sends the room conditions in the prompt', async () => {
+    const fetch = mockGemini(GOOD_ANSWER)
+    await identifyPlant(PHOTO, 'key', { ...EMPTY_ROOM, humidity: 'dry' })
+    const body = JSON.parse(String(fetch.mock.calls[0][1]?.body))
+    expect(body.contents[0].parts[0].text).toContain('Humidity: dry')
+  })
+
+  it('stores missing care notes as null', async () => {
+    mockGemini({ ...GOOD_ANSWER, care_notes: undefined })
+    expect(await identifyPlant(PHOTO, 'key')).toMatchObject({
+      care_notes: null,
     })
   })
 

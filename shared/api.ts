@@ -2,7 +2,31 @@
 
 export const ROOM_NAME_MAX_LENGTH = 40
 
-export type Room = {
+export const WINDOW_DIRECTIONS = [
+  'north',
+  'east',
+  'south',
+  'west',
+  'none',
+] as const
+export const ROOM_LIGHT_LEVELS = ['direct', 'bright_indirect', 'low'] as const
+export const HUMIDITY_LEVELS = ['dry', 'normal', 'humid'] as const
+export const ROOM_TEMP_MIN = 0
+export const ROOM_TEMP_MAX = 45
+
+// Flags are 0 or 1, as SQLite stores them.
+export type RoomProfile = {
+  window_direction: (typeof WINDOW_DIRECTIONS)[number] | null
+  light_level: (typeof ROOM_LIGHT_LEVELS)[number] | null
+  humidity: (typeof HUMIDITY_LEVELS)[number] | null
+  temp_min: number | null
+  temp_max: number | null
+  near_draft: 0 | 1
+  near_ac: 0 | 1
+  near_heater: 0 | 1
+}
+
+export type Room = RoomProfile & {
   id: number
   name: string
   plant_count: number
@@ -18,6 +42,7 @@ export type Plant = {
   category: string | null
   light_needs: string | null
   water_every_days: number | null
+  care_notes: string | null
 }
 
 export type RoomDetails = Omit<Room, 'plant_count'> & {

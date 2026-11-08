@@ -22,9 +22,9 @@ One npm package. `@cloudflare/vite-plugin` runs the frontend and the Worker toge
 
 ## Status
 
-Built: password sign-in, a settings drawer behind the header cog (sign-out, rooms add/rename/delete), plants (add from a photo, delete), AI species ID on add, and a "next tasks" list on the home screen (watering only so far).
+Built: password sign-in, a settings drawer behind the header cog (sign-out, rooms add/rename/delete), plants (add from a photo, delete), AI species ID on add, room profiles (window direction, light, humidity, temperature range, draft/AC/heater flags, edited on the room page), and a "next tasks" list on the home screen (watering only so far).
 
-The UI is Hebrew and right-to-left. Hebrew text lives directly in the components, there is no i18n layer. Gemini returns the plant's name in Hebrew, a smaller English name, and the species in Latin. `category` and `light_needs` are stored as English enum values, and `src/RoomPage.tsx` holds their Hebrew labels.
+The UI is Hebrew and right-to-left. Hebrew text lives directly in the components, there is no i18n layer. Gemini returns the plant's name in Hebrew, a smaller English name, and the species in Latin. Identify also gets the plant's room profile in the prompt (`describeRoom` in `worker/gemini.ts`) and saves a short Hebrew `care_notes`; it is not refreshed when the profile changes later. Live sensor readings (Sensibo) are not built: they should go in their own table keyed by `room_id`, not in the `rooms` profile columns, which hold what the owner says. `category` and `light_needs` are stored as English enum values, and `src/RoomPage.tsx` holds their Hebrew labels.
 
 Planned:
 
