@@ -112,10 +112,15 @@ button:disabled {
 }
 
 .app-title {
-  font-size: 1.15rem;
-  font-weight: 600;
   color: #2f6b3f;
   text-decoration: none;
+  --logo-accent: #6fae7c;
+}
+
+.logo {
+  display: block;
+  height: 2rem;
+  width: auto;
 }
 
 .settings-menu {
@@ -183,7 +188,8 @@ button:disabled {
 
 @media (prefers-color-scheme: dark) {
   .app-title {
-    color: #8fc79c;
+    color: #e3eee6;
+    --logo-accent: #86d6a0;
   }
 
   .settings-menu {

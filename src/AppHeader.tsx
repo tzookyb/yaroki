@@ -1,3 +1,4 @@
+import { Logo } from './Logo'
 import { useRef, useState } from 'react'
 import { pullProd, signOut, signOutEverywhere } from './api'
 import HomeLocationForm from './HomeLocationForm'
@@ -64,7 +65,7 @@ function AppHeader({ onSignOut }: { onSignOut: () => void }) {
   return (
     <header className="app-header">
       <a href="#/" className="app-title">
-        <span aria-hidden="true">🌱</span> הצמחים שלי
+        <Logo />
       </a>
       <button
         type="button"
