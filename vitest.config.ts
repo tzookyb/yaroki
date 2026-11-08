@@ -14,6 +14,7 @@ export default defineConfig(async () => {
             APP_PASSWORD: 'test-password-long-enough',
             GEMINI_API_KEY: 'test-gemini-key',
             SENTRY_DSN: '',
+            SENSIBO_API_KEY: 'test-sensibo-key',
             TEST_MIGRATIONS: migrations,
           },
         },

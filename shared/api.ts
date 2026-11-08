@@ -11,6 +11,8 @@ export const WINDOW_DIRECTIONS = [
 ] as const
 export const ROOM_LIGHT_LEVELS = ['direct', 'bright_indirect', 'low'] as const
 export const HUMIDITY_LEVELS = ['dry', 'normal', 'humid'] as const
+export const LOCATION_TYPES = ['indoor', 'outside_window', 'garden'] as const
+export type LocationType = (typeof LOCATION_TYPES)[number]
 export const ROOM_TEMP_MIN = 0
 export const ROOM_TEMP_MAX = 45
 
@@ -29,6 +31,7 @@ export type RoomProfile = {
 export type Room = RoomProfile & {
   id: number
   name: string
+  location_type: LocationType
   plant_count: number
 }
 
@@ -71,4 +74,35 @@ export type Task = {
 export type TaskList = {
   today: string
   tasks: Task[]
+}
+
+export type ClimateWeek = {
+  year: number
+  // Week of the year, 0 to 53, counting from the first Monday as SQLite's %W does.
+  week: number
+  temperature: number
+  humidity: number | null
+}
+
+export type RoomClimate = {
+  // Sensibo devices linked to the room. Most rooms have none, and then show no readings.
+  sensor_count: number
+  weeks: ClimateWeek[]
+  latest: {
+    temperature: number
+    humidity: number | null
+    measured_at: string
+  } | null
+}
+
+export type SensiboDevice = {
+  id: string
+  name: string
+  room_id: number | null
+}
+
+export type HomeLocation = {
+  label: string
+  latitude: number
+  longitude: number
 }
