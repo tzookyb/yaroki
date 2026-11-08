@@ -8,6 +8,7 @@ import {
 import { createApp, validate } from '../app'
 import { enrichPlant } from '../enrich'
 import { identifyPlant } from '../gemini'
+import { latestReading } from '../roomReading'
 import { findReferenceImage } from '../wikipedia'
 import { idParam, skipBody } from '../schemas'
 import { setTaskDone, setTaskSkipped } from '../tasks'
@@ -35,20 +36,13 @@ export const plantRoutes = createApp()
           .bind(plant.room_id)
           .first<RoomProfile>()
       : null
-    // Old readings (a broken sensor, a room switched to outdoor) say nothing about now.
-    const latestReading = plant.room_id
-      ? await c.env.DB.prepare(
-          `SELECT temperature, humidity FROM room_readings
-           WHERE room_id = ? AND measured_at >= date('now', '-3 days')
-           ORDER BY measured_at DESC LIMIT 1`,
-        )
-          .bind(plant.room_id)
-          .first<NonNullable<PlantDetails['latest_reading']>>()
+    const reading = plant.room_id
+      ? await latestReading(c.env.DB, plant.room_id)
       : null
     const details: PlantDetails = {
       ...plant,
       room,
-      latest_reading: latestReading,
+      latest_reading: reading,
     }
     return c.json(details)
   })
@@ -97,6 +91,8 @@ export const plantRoutes = createApp()
         await photo.arrayBuffer(),
         c.env.GEMINI_API_KEY,
         room ?? undefined,
+        (plant.room_id && (await latestReading(c.env.DB, plant.room_id))) ||
+          undefined,
       )
     } catch (error) {
       console.error('Could not identify plant', error)

@@ -2,7 +2,9 @@ import {
   HUMIDITY_LEVELS,
   ROOM_TEMP_MAX,
   ROOM_TEMP_MIN,
+  type LocationType,
   type RoomProfile,
+  type RoomReading,
 } from '../shared/api'
 
 // Flash-Lite, because gemini-3.8-flash took over 25 s on a plant photo in production.
@@ -62,16 +64,27 @@ const LIGHT_TEXT = {
 }
 const HUMIDITY_TEXT = { dry: 'dry', normal: 'normal', humid: 'humid' }
 
-export function describeRoom(room: RoomProfile) {
+// A measurement replaces what the owner typed for humidity and temperature.
+export function describeRoom(
+  room: RoomProfile & { location_type?: LocationType },
+  reading?: RoomReading,
+) {
+  // Air conditioners, heaters and drafts only mean something indoors.
+  const indoor = (room.location_type ?? 'indoor') === 'indoor'
   const facts = [
     room.window_direction && `Windows: ${WINDOW_TEXT[room.window_direction]}.`,
     room.light_level && `Light: ${LIGHT_TEXT[room.light_level]}.`,
-    room.humidity && `Humidity: ${HUMIDITY_TEXT[room.humidity]}.`,
-    (room.temp_min !== null || room.temp_max !== null) &&
+    reading
+      ? `Measured now: ${reading.temperature} °C${reading.humidity === null ? '' : `, ${reading.humidity}% relative humidity`}.`
+      : room.humidity && `Humidity: ${HUMIDITY_TEXT[room.humidity]}.`,
+    !reading &&
+      (room.temp_min !== null || room.temp_max !== null) &&
       `Temperature: ${room.temp_min ?? '?'} to ${room.temp_max ?? '?'} °C.`,
-    room.near_draft && 'Plants here are in a draft.',
-    room.near_ac && 'An air conditioner blows or sits near the plants.',
-    room.near_heater && 'A heater is near the plants.',
+    indoor && room.near_draft && 'Plants here are in a draft.',
+    indoor &&
+      room.near_ac &&
+      'An air conditioner blows or sits near the plants.',
+    indoor && room.near_heater && 'A heater is near the plants.',
   ].filter(Boolean)
   if (facts.length === 0) {
     return ''
@@ -190,10 +203,11 @@ export async function identifyPlant(
   photo: ArrayBuffer,
   apiKey: string,
   room?: RoomProfile,
+  reading?: RoomReading,
 ): Promise<Identification | null> {
   const answer = await askGemini(
     [
-      { text: PROMPT + (room ? describeRoom(room) : '') },
+      { text: PROMPT + (room ? describeRoom(room, reading) : '') },
       {
         inlineData: {
           mimeType: 'image/webp',
@@ -240,11 +254,12 @@ export async function describePlant(
   species: string,
   apiKey: string,
   room?: RoomProfile,
+  reading?: RoomReading,
 ): Promise<PlantNeeds> {
   const answer = await askGemini(
     [
       {
-        text: `The house plant is ${species}.\n${NEEDS_PROMPT}${room ? describeRoom(room) : ''}`,
+        text: `The house plant is ${species}.\n${NEEDS_PROMPT}${room ? describeRoom(room, reading) : ''}`,
       },
     ],
     NEEDS_SCHEMA,

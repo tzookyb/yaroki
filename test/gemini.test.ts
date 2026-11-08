@@ -79,6 +79,29 @@ describe('describeRoom', () => {
     expect(text).not.toContain('Humidity')
     expect(text).not.toContain('in a draft')
   })
+
+  it('uses a measurement instead of the typed humidity and temperature', () => {
+    const text = describeRoom(
+      { ...EMPTY_ROOM, humidity: 'dry', temp_min: 10, temp_max: 12 },
+      { temperature: 23.5, humidity: 55 },
+    )
+    expect(text).toContain('23.5 °C, 55% relative humidity')
+    expect(text).not.toContain('Humidity: dry')
+    expect(text).not.toContain('10 to 12')
+  })
+
+  it('leaves out air conditioner, heater and draft for outdoor rooms', () => {
+    const text = describeRoom({
+      ...EMPTY_ROOM,
+      light_level: 'direct',
+      near_ac: 1,
+      near_heater: 1,
+      near_draft: 1,
+      location_type: 'garden',
+    })
+    expect(text).toContain('direct sun')
+    expect(text).not.toMatch(/in a draft|sits near|heater is near/)
+  })
 })
 
 describe('identifyPlant', () => {
