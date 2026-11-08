@@ -31,11 +31,15 @@ export type RoomProfile = {
   near_heater: 0 | 1
 }
 
+// Newest measurement from the last 3 days, from a sensor or the outdoor weather.
+export type RoomReading = { temperature: number; humidity: number | null }
+
 export type Room = RoomProfile & {
   id: number
   name: string
   location_type: LocationType
   plant_count: number
+  latest_reading?: RoomReading | null
 }
 
 export type Plant = {
@@ -59,8 +63,7 @@ export type Plant = {
 
 export type PlantDetails = Plant & {
   room: RoomProfile | null
-  // Newest measurement from the last 3 days, from a sensor or the outdoor weather.
-  latest_reading: { temperature: number; humidity: number | null } | null
+  latest_reading: RoomReading | null
 }
 
 export type RoomDetails = Omit<Room, 'plant_count'> & {

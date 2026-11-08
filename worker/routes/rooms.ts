@@ -1,6 +1,7 @@
 import type { Plant, Room } from '../../shared/api'
 import { createApp, validate } from '../app'
 import { MAX_PHOTO_BYTES, MAX_PLANTS, MAX_R2_DELETE_KEYS } from '../limits'
+import { latestReading } from '../roomReading'
 import { idParam, roomBody, roomProfileBody } from '../schemas'
 
 export const roomRoutes = createApp()
@@ -12,7 +13,13 @@ export const roomRoutes = createApp()
        GROUP BY rooms.id
        ORDER BY rooms.name COLLATE NOCASE`,
     ).all<Room>()
-    return c.json(results)
+    const rooms = await Promise.all(
+      results.map(async (room) => ({
+        ...room,
+        latest_reading: await latestReading(c.env.DB, room.id),
+      })),
+    )
+    return c.json(rooms)
   })
 
   .post('/', validate('json', roomBody), async (c) => {

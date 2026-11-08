@@ -76,6 +76,8 @@ function RoomSetup({ roomId }: { roomId: number }) {
           <RoomProfileForm
             roomId={room.id}
             profile={room}
+            locationType={room.location_type}
+            reading={room.latest_reading ?? null}
             onSaved={(profile) => setRoom({ ...room, ...profile })}
           />
         </>

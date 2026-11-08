@@ -1,5 +1,6 @@
 import { ENRICH_VERSION, type RoomProfile } from '../shared/api'
 import { describePlant } from './gemini'
+import { latestReading } from './roomReading'
 import { findReferenceImage } from './wikipedia'
 
 // Fills in the AI data that plants identified before ENRICH_VERSION went up don't have yet.
@@ -31,6 +32,8 @@ export async function enrichPlant(env: Env, id: number) {
     plant.species,
     env.GEMINI_API_KEY,
     room ?? undefined,
+    (plant.room_id && (await latestReading(env.DB, plant.room_id))) ||
+      undefined,
   )
   const referenceImage =
     plant.reference_image_url ?? (await findReferenceImage(plant.species))

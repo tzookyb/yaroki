@@ -9,6 +9,7 @@ import {
 import { HUMIDITY_LABELS } from './labels'
 import InfoHint from './InfoHint'
 import { saveRoomProfile, type RoomProfile } from './api'
+import type { LocationType, RoomReading } from '../shared/api'
 
 const WINDOW_LABELS = {
   north: 'צפון',
@@ -61,10 +62,14 @@ function toTemp(text: string) {
 function RoomProfileForm({
   roomId,
   profile,
+  locationType,
+  reading,
   onSaved,
 }: {
   roomId: number
   profile: RoomProfile
+  locationType: LocationType
+  reading: RoomReading | null
   onSaved: (profile: RoomProfile) => void
 }) {
   const [draft, setDraft] = useState(profile)
@@ -96,23 +101,26 @@ function RoomProfileForm({
     }
   }
 
-  const flags = [
-    [
-      'near_draft',
-      'יש זרם אוויר',
-      'אוויר שנע כל הזמן ליד הצמחים, למשל ליד דלת או חלון שנפתחים הרבה. זרם אוויר מייבש עלים ומקרר צמחים רגישים.',
-    ],
-    [
-      'near_ac',
-      'מזגן קרוב לצמחים',
-      'המזגן נושף ישר על הצמחים, או נמצא במרחק של עד כמטר-שניים מהם. אוויר קר ויבש מזיק לרוב הצמחים.',
-    ],
-    [
-      'near_heater',
-      'תנור או רדיאטור קרוב לצמחים',
-      'תנור, רדיאטור או מפזר חום נמצאים במרחק של עד כמטר-שניים מהצמחים. חום יבש מייבש את העלים ואת האדמה.',
-    ],
-  ] as const
+  const indoor = locationType === 'indoor'
+  const flags = !indoor
+    ? []
+    : ([
+        [
+          'near_draft',
+          'יש זרם אוויר',
+          'אוויר שנע כל הזמן ליד הצמחים, למשל ליד דלת או חלון שנפתחים הרבה. זרם אוויר מייבש עלים ומקרר צמחים רגישים.',
+        ],
+        [
+          'near_ac',
+          'מזגן קרוב לצמחים',
+          'המזגן נושף ישר על הצמחים, או נמצא במרחק של עד כמטר-שניים מהם. אוויר קר ויבש מזיק לרוב הצמחים.',
+        ],
+        [
+          'near_heater',
+          'תנור או רדיאטור קרוב לצמחים',
+          'תנור, רדיאטור או מפזר חום נמצאים במרחק של עד כמטר-שניים מהצמחים. חום יבש מייבש את העלים ואת האדמה.',
+        ],
+      ] as const)
 
   return (
     <>
@@ -131,41 +139,53 @@ function RoomProfileForm({
           value={draft.light_level}
           onChange={(light_level) => change({ light_level })}
         />
-        <Select
-          label="לחות"
-          options={HUMIDITY_LEVELS}
-          labels={HUMIDITY_LABELS}
-          value={draft.humidity}
-          onChange={(humidity) => change({ humidity })}
-        />
-        <div className="temp-range">
-          <label>
-            טמפרטורה מינימלית (°C)
-            <input
-              type="number"
-              inputMode="numeric"
-              min={ROOM_TEMP_MIN}
-              max={ROOM_TEMP_MAX}
-              value={draft.temp_min ?? ''}
-              onChange={(event) =>
-                change({ temp_min: toTemp(event.target.value) })
-              }
+        {reading ? (
+          <p className="muted">
+            נמדד לאחרונה: {Math.round(reading.temperature * 10) / 10}°C
+            {reading.humidity !== null &&
+              `, לחות ${Math.round(reading.humidity)}%`}
+            . הלחות והטמפרטורה נלקחות מהחיישן או משירות מזג האוויר, ואין צורך
+            להזין אותן.
+          </p>
+        ) : (
+          <>
+            <Select
+              label="לחות"
+              options={HUMIDITY_LEVELS}
+              labels={HUMIDITY_LABELS}
+              value={draft.humidity}
+              onChange={(humidity) => change({ humidity })}
             />
-          </label>
-          <label>
-            מקסימלית (°C)
-            <input
-              type="number"
-              inputMode="numeric"
-              min={ROOM_TEMP_MIN}
-              max={ROOM_TEMP_MAX}
-              value={draft.temp_max ?? ''}
-              onChange={(event) =>
-                change({ temp_max: toTemp(event.target.value) })
-              }
-            />
-          </label>
-        </div>
+            <div className="temp-range">
+              <label>
+                טמפרטורה מינימלית (°C)
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={ROOM_TEMP_MIN}
+                  max={ROOM_TEMP_MAX}
+                  value={draft.temp_min ?? ''}
+                  onChange={(event) =>
+                    change({ temp_min: toTemp(event.target.value) })
+                  }
+                />
+              </label>
+              <label>
+                מקסימלית (°C)
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={ROOM_TEMP_MIN}
+                  max={ROOM_TEMP_MAX}
+                  value={draft.temp_max ?? ''}
+                  onChange={(event) =>
+                    change({ temp_max: toTemp(event.target.value) })
+                  }
+                />
+              </label>
+            </div>
+          </>
+        )}
         {flags.map(([key, label, hint]) => (
           <div key={key}>
             <label className="checkbox">

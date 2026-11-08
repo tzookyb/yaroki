@@ -236,6 +236,23 @@ describe('plant details', () => {
     })
   })
 
+  it('includes the latest reading in the room list', async () => {
+    const room = await addRoom()
+    const before = await (await api('/rooms', {}, session)).json<any[]>()
+    expect(before.find((r) => r.id === room)?.latest_reading).toBeNull()
+    await env.DB.prepare(
+      `INSERT INTO room_readings (room_id, source_id, measured_at, temperature, humidity)
+       VALUES (?, 'weather', datetime('now', '-1 hours'), 21.5, 48)`,
+    )
+      .bind(room)
+      .run()
+    const after = await (await api('/rooms', {}, session)).json<any[]>()
+    expect(after.find((r) => r.id === room)?.latest_reading).toEqual({
+      temperature: 21.5,
+      humidity: 48,
+    })
+  })
+
   it('returns room null for a plant without a room', async () => {
     const plant = await addPlant({})
     const body = await (await api(`/plants/${plant}`, {}, session)).json()
