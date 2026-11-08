@@ -115,9 +115,8 @@ function RoomProfileForm({
   ] as const
 
   return (
-    <details className="room-profile">
-      <summary>תנאי החדר</summary>
-      <form onSubmit={handleSubmit}>
+    <>
+      <form className="room-profile" onSubmit={handleSubmit}>
         <Select
           label="כיוון החלון"
           options={WINDOW_DIRECTIONS}
@@ -192,7 +191,7 @@ function RoomProfileForm({
           לחדר.
         </p>
       </form>
-    </details>
+    </>
   )
 }
 
