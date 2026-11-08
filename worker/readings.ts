@@ -2,7 +2,7 @@ import { fetchSensiboDevices } from './sensibo'
 import {
   fetchCurrentWeather,
   fetchWeatherHistory,
-  weatherPlace,
+  homePlace,
   type WeatherReading,
 } from './weather'
 
@@ -59,7 +59,7 @@ async function collectSensibo(env: Env) {
 }
 
 async function collectWeather(env: Env) {
-  const place = weatherPlace(env)
+  const place = await homePlace(env.DB)
   const { results: rooms } = await env.DB.prepare(
     "SELECT id FROM rooms WHERE location_type != 'indoor'",
   ).all<{ id: number }>()
@@ -93,7 +93,7 @@ function dateText(date: Date) {
 }
 
 export async function backfillWeather(env: Env, roomId: number) {
-  const place = weatherPlace(env)
+  const place = await homePlace(env.DB)
   if (!place) {
     return
   }

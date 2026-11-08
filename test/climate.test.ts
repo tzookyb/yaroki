@@ -102,6 +102,12 @@ describe('sensors', () => {
   })
 })
 
+async function setHome() {
+  await env.DB.prepare(
+    "INSERT INTO home_location (id, label, latitude, longitude) VALUES (1, 'x', 32.1, 34.8)",
+  ).run()
+}
+
 describe('collecting readings', () => {
   it('stores a reading for a mapped device, once', async () => {
     const roomId = await addRoom()
@@ -134,6 +140,7 @@ describe('collecting readings', () => {
   })
 
   it('stores the weather for outdoor rooms only', async () => {
+    await setHome()
     const garden = await addRoom('garden')
     const indoor = await addRoom('salon')
     await env.DB.prepare(
@@ -172,6 +179,7 @@ describe('collecting readings', () => {
   })
 
   it('keeps going when one source fails', async () => {
+    await setHome()
     const garden = await addRoom('garden')
     await env.DB.prepare(
       "UPDATE rooms SET location_type = 'garden' WHERE id = ?",
@@ -200,6 +208,7 @@ describe('collecting readings', () => {
 
 describe('room location and climate', () => {
   it('backfills two years of weather when a room becomes outdoor', async () => {
+    await setHome()
     const roomId = await addRoom()
     const spy = mockFetch({
       'archive-api.open-meteo.com': {
@@ -315,5 +324,107 @@ describe('room location and climate', () => {
     expect(
       (await env.DB.prepare('SELECT * FROM room_readings').all()).results,
     ).toHaveLength(0)
+  })
+})
+
+describe('home location', () => {
+  const PHOTON = {
+    features: [
+      {
+        geometry: { coordinates: [34.78, 32.08] },
+        properties: {
+          name: 'Dizengoff 50',
+          street: 'Dizengoff Street',
+          housenumber: '50',
+          city: 'Tel Aviv',
+          country: 'Israel',
+        },
+      },
+      {
+        geometry: { coordinates: [34.8, 32.1] },
+        properties: { name: 'Tel Aviv', country: 'Israel' },
+      },
+    ],
+  }
+
+  it('is empty until it is set, then saved and read back', async () => {
+    expect(await (await api('/climate/home', {}, session)).json()).toBeNull()
+    const home = { label: 'Tel Aviv, Israel', latitude: 32.1, longitude: 34.8 }
+    expect((await put('/climate/home', home)).status).toBe(200)
+    expect(await (await api('/climate/home', {}, session)).json()).toEqual(home)
+    await put('/climate/home', { ...home, label: 'Haifa' })
+    expect(
+      await env.DB.prepare(
+        'SELECT COUNT(*) AS n FROM home_location',
+      ).first<number>('n'),
+    ).toBe(1)
+  })
+
+  it.each([
+    { label: '', latitude: 1, longitude: 1 },
+    { label: 'x', latitude: 91, longitude: 1 },
+    { label: 'x', latitude: 1, longitude: 181 },
+  ])('rejects %j', async (body) => {
+    expect((await put('/climate/home', body)).status).toBe(400)
+  })
+
+  it('replaces the weather of outdoor rooms with the new place', async () => {
+    const garden = await addRoom('garden')
+    await env.DB.prepare(
+      "UPDATE rooms SET location_type = 'garden' WHERE id = ?",
+    )
+      .bind(garden)
+      .run()
+    await env.DB.prepare(
+      "INSERT INTO room_readings (room_id, source_id, measured_at, temperature) VALUES (?, 'weather', '2025-01-01 12:00:00', 5)",
+    )
+      .bind(garden)
+      .run()
+    mockFetch({
+      'archive-api.open-meteo.com': {
+        daily: {
+          time: ['2025-02-01'],
+          temperature_2m_mean: [30],
+          relative_humidity_2m_mean: [40],
+        },
+      },
+    })
+
+    await put('/climate/home', {
+      label: 'Eilat',
+      latitude: 29.5,
+      longitude: 34.9,
+    })
+
+    expect(await readings(garden)).toEqual([
+      {
+        source_id: 'weather',
+        measured_at: '2025-02-01 12:00:00',
+        temperature: 30,
+        humidity: 40,
+      },
+    ])
+  })
+
+  it('searches addresses through Photon', async () => {
+    mockFetch({ 'photon.komoot.io': PHOTON })
+    const response = await api('/climate/places?q=dizengoff', {}, session)
+    expect(await response.json()).toEqual([
+      {
+        label: 'Dizengoff 50, Dizengoff Street 50, Tel Aviv, Israel',
+        latitude: 32.08,
+        longitude: 34.78,
+      },
+      { label: 'Tel Aviv, Israel', latitude: 32.1, longitude: 34.8 },
+    ])
+  })
+
+  it('rejects a short query and answers 502 when Photon fails', async () => {
+    expect((await api('/climate/places?q=ab', {}, session)).status).toBe(400)
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () => new Response('no', { status: 500 }),
+    )
+    expect((await api('/climate/places?q=abc', {}, session)).status).toBe(502)
   })
 })

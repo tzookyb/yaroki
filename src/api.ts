@@ -1,4 +1,5 @@
 import type {
+  HomeLocation,
   LocationType,
   Plant,
   PlantDetails,
@@ -12,6 +13,7 @@ import type {
 } from '../shared/api'
 
 export type {
+  HomeLocation,
   Plant,
   PlantDetails,
   LocationType,
@@ -166,5 +168,24 @@ export function setSensorRoom(sensiboId: string, roomId: number | null) {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ room_id: roomId }),
+  })
+}
+
+export function getHomeLocation() {
+  return request<HomeLocation | null>('/api/climate/home')
+}
+
+export function searchPlaces(query: string, signal: AbortSignal) {
+  return request<HomeLocation[]>(
+    `/api/climate/places?q=${encodeURIComponent(query)}`,
+    { signal },
+  )
+}
+
+export function saveHomeLocation(home: HomeLocation) {
+  return request<HomeLocation>('/api/climate/home', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(home),
   })
 }

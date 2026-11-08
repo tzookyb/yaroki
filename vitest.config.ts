@@ -15,8 +15,6 @@ export default defineConfig(async () => {
             GEMINI_API_KEY: 'test-gemini-key',
             SENTRY_DSN: '',
             SENSIBO_API_KEY: 'test-sensibo-key',
-            WEATHER_LATITUDE: '32.1',
-            WEATHER_LONGITUDE: '34.8',
             TEST_MIGRATIONS: migrations,
           },
         },

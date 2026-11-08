@@ -1,8 +1,16 @@
 import type { ClimateWeek, RoomClimate, SensiboDevice } from '../../shared/api'
 import { createApp, validate } from '../app'
-import { backfillWeather } from '../readings'
+import { searchPlaces } from '../places'
+import { WEATHER_SOURCE, backfillWeather } from '../readings'
 import { fetchSensiboDevices } from '../sensibo'
-import { idParam, locationBody, sensorBody, sensorParam } from '../schemas'
+import {
+  homeLocationBody,
+  idParam,
+  locationBody,
+  placeQuery,
+  sensorBody,
+  sensorParam,
+} from '../schemas'
 
 const GRAPH_YEARS = 3
 
@@ -128,3 +136,46 @@ export const climateRoutes = createApp()
       return c.body(null, 204)
     },
   )
+
+  .get('/home', async (c) => {
+    return c.json(
+      await c.env.DB.prepare(
+        'SELECT label, latitude, longitude FROM home_location WHERE id = 1',
+      ).first(),
+    )
+  })
+
+  .get('/places', validate('query', placeQuery), async (c) => {
+    try {
+      return c.json(await searchPlaces(c.req.valid('query').q))
+    } catch (error) {
+      console.error('Address search failed', error)
+      return c.json({ error: 'Address search failed' }, 502)
+    }
+  })
+
+  .put('/home', validate('json', homeLocationBody), async (c) => {
+    const home = c.req.valid('json')
+    await c.env.DB.prepare(
+      `INSERT INTO home_location (id, label, latitude, longitude) VALUES (1, ?, ?, ?)
+       ON CONFLICT (id) DO UPDATE SET label = excluded.label,
+         latitude = excluded.latitude, longitude = excluded.longitude`,
+    )
+      .bind(home.label, home.latitude, home.longitude)
+      .run()
+    // Weather from the old place is wrong now, so outdoor rooms start over from the new one.
+    await c.env.DB.prepare('DELETE FROM room_readings WHERE source_id = ?')
+      .bind(WEATHER_SOURCE)
+      .run()
+    const { results: rooms } = await c.env.DB.prepare(
+      "SELECT id FROM rooms WHERE location_type != 'indoor'",
+    ).all<{ id: number }>()
+    for (const room of rooms) {
+      try {
+        await backfillWeather(c.env, room.id)
+      } catch (error) {
+        console.error('Weather backfill failed', error)
+      }
+    }
+    return c.json(home)
+  })

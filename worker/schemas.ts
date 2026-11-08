@@ -46,3 +46,11 @@ export const sensorParam = z.object({
 export const sensorBody = z.object({
   room_id: z.number().int().positive().nullable(),
 })
+
+export const placeQuery = z.object({ q: z.string().trim().min(3).max(100) })
+
+export const homeLocationBody = z.object({
+  label: z.string().trim().min(1).max(200),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+})

@@ -10,21 +10,12 @@ export type WeatherReading = {
   humidity: number | null
 }
 
-type Place = { latitude: number; longitude: number }
+export type Place = { latitude: number; longitude: number }
 
-// The home location is personal and this repo is public, so it comes from secrets.
-export function weatherPlace(env: Env): Place | null {
-  const latitude = Number(env.WEATHER_LATITUDE)
-  const longitude = Number(env.WEATHER_LONGITUDE)
-  if (
-    !env.WEATHER_LATITUDE ||
-    !env.WEATHER_LONGITUDE ||
-    !Number.isFinite(latitude) ||
-    !Number.isFinite(longitude)
-  ) {
-    return null
-  }
-  return { latitude, longitude }
+export function homePlace(db: D1Database) {
+  return db
+    .prepare('SELECT latitude, longitude FROM home_location WHERE id = 1')
+    .first<Place>()
 }
 
 async function get(base: string, place: Place, params: Record<string, string>) {

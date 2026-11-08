@@ -100,3 +100,9 @@ export type SensiboDevice = {
   name: string
   room_id: number | null
 }
+
+export type HomeLocation = {
+  label: string
+  latitude: number
+  longitude: number
+}
