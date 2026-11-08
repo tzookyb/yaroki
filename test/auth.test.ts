@@ -119,6 +119,8 @@ describe('route guard', () => {
     ['POST', '/plants/1/enrich'],
     ['POST', '/plants/1/tasks/water/done'],
     ['DELETE', '/plants/1/tasks/water/done'],
+    ['POST', '/plants/1/tasks/water/skip'],
+    ['DELETE', '/plants/1/tasks/water/skip'],
     ['GET', '/climate/rooms/1'],
     ['PUT', '/climate/rooms/1/location'],
     ['GET', '/climate/home'],

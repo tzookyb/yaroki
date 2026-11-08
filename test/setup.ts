@@ -8,6 +8,7 @@ await applyD1Migrations(env.DB, env.TEST_MIGRATIONS)
 beforeEach(async () => {
   await env.DB.batch(
     [
+      'task_skips',
       'events',
       'plants',
       'home_location',

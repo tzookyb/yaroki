@@ -1,6 +1,11 @@
 import { env } from 'cloudflare:workers'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { getTasks, setTaskDone, todayInJerusalem } from '../worker/tasks'
+import {
+  getTasks,
+  setTaskDone,
+  setTaskSkipped,
+  todayInJerusalem,
+} from '../worker/tasks'
 import { addPlant, addRoom, addWatering } from './helpers'
 
 function setNow(utc: string) {
@@ -201,5 +206,59 @@ describe('task list', () => {
       done_today: true,
       due_date: shiftDate(todayInJerusalem(), 1),
     })
+  })
+})
+
+describe('skipping', () => {
+  it('postpones the task by the reason, and brings it back after', async () => {
+    setNow('2026-05-10T09:00:00Z')
+    const plant = await addPlant({ water_every_days: 7 })
+    expect(await setTaskSkipped(env.DB, 'water', plant, 'wet_soil')).toBe(true)
+    const { tasks } = await getTasks(env.DB, true)
+    expect(tasks).toMatchObject([
+      { due_date: '2026-05-13', skip_reason: 'wet_soil' },
+    ])
+    expect((await getTasks(env.DB, false)).tasks).toHaveLength(0)
+
+    setNow('2026-05-13T09:00:00Z')
+    expect((await getTasks(env.DB, false)).tasks).toHaveLength(1)
+  })
+
+  it('replaces an earlier skip and can be undone', async () => {
+    setNow('2026-05-10T09:00:00Z')
+    const plant = await addPlant({ water_every_days: 7 })
+    await setTaskSkipped(env.DB, 'water', plant, 'dormant')
+    await setTaskSkipped(env.DB, 'water', plant, 'away')
+    expect((await getTasks(env.DB, true)).tasks[0]).toMatchObject({
+      due_date: '2026-05-11',
+      skip_reason: 'away',
+    })
+    await setTaskSkipped(env.DB, 'water', plant, null)
+    expect((await getTasks(env.DB, true)).tasks[0]).toMatchObject({
+      due_date: '2026-05-10',
+      skip_reason: null,
+    })
+  })
+
+  it('stops counting once the plant is watered', async () => {
+    setNow('2026-05-10T09:00:00Z')
+    const plant = await addPlant({ water_every_days: 2 })
+    await setTaskSkipped(env.DB, 'water', plant, 'dormant')
+    setNow('2026-05-11T09:00:00Z')
+    await setTaskDone(env.DB, 'water', plant, true)
+    setNow('2026-05-12T09:00:00Z')
+    expect((await getTasks(env.DB, true)).tasks[0]).toMatchObject({
+      due_date: '2026-05-13',
+      skip_reason: null,
+    })
+  })
+
+  it('refuses a task that is done today or does not exist', async () => {
+    setNow('2026-05-10T09:00:00Z')
+    const plant = await addPlant({ water_every_days: 7 })
+    await setTaskDone(env.DB, 'water', plant, true)
+    expect(await setTaskSkipped(env.DB, 'water', plant, 'away')).toBe(false)
+    expect(await setTaskSkipped(env.DB, 'water', 999, 'away')).toBe(false)
+    expect(await setTaskSkipped(env.DB, 'prune', plant, 'away')).toBe(false)
   })
 })
