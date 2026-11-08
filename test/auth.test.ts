@@ -119,6 +119,13 @@ describe('route guard', () => {
     ['POST', '/plants/1/enrich'],
     ['POST', '/plants/1/tasks/water/done'],
     ['DELETE', '/plants/1/tasks/water/done'],
+    ['GET', '/climate/rooms/1'],
+    ['PUT', '/climate/rooms/1/location'],
+    ['GET', '/climate/home'],
+    ['PUT', '/climate/home'],
+    ['GET', '/climate/places?q=abc'],
+    ['GET', '/climate/sensors'],
+    ['PUT', '/climate/sensors/abc'],
     ['GET', '/tasks'],
     ['GET', '/photos/plants/x.webp'],
   ]

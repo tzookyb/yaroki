@@ -11,6 +11,7 @@ import {
 import { CATEGORY_LABELS, LIGHT_LABELS, wateringLabel } from './labels'
 import { ROOMS_CHANGED } from './ManageRooms'
 import { resizePhoto } from './photo'
+import RoomClimate from './RoomClimate'
 import RoomProfileForm from './RoomProfileForm'
 
 function RoomPage({ id }: { id: string }) {
@@ -112,6 +113,13 @@ function RoomPage({ id }: { id: string }) {
             profile={room}
             onSaved={(profile) =>
               setRoom((current) => current && { ...current, ...profile })
+            }
+          />
+          <RoomClimate
+            roomId={room.id}
+            locationType={room.location_type}
+            onLocationChange={(location_type) =>
+              setRoom((current) => current && { ...current, location_type })
             }
           />
           <ul className="plants">

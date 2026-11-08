@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react'
 import { pullProd, signOut, signOutEverywhere } from './api'
+import HomeLocationForm from './HomeLocationForm'
 import ManageRooms from './ManageRooms'
 
 const DRAWER_MS = 200
 
 function AppHeader({ onSignOut }: { onSignOut: () => void }) {
   const menu = useRef<HTMLDivElement>(null)
-  const [view, setView] = useState<'menu' | 'rooms'>('menu')
+  const [view, setView] = useState<'menu' | 'rooms' | 'home'>('menu')
   const [closing, setClosing] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -95,7 +96,7 @@ function AppHeader({ onSignOut }: { onSignOut: () => void }) {
                 className="icon-button back-button"
                 onClick={() => setView('menu')}
               >
-                → ניהול חדרים
+                → {view === 'rooms' ? 'ניהול חדרים' : 'כתובת הבית'}
               </button>
             )}
             <button
@@ -109,6 +110,8 @@ function AppHeader({ onSignOut }: { onSignOut: () => void }) {
           </div>
           {view === 'rooms' ? (
             <ManageRooms />
+          ) : view === 'home' ? (
+            <HomeLocationForm />
           ) : (
             <>
               <button
@@ -117,6 +120,13 @@ function AppHeader({ onSignOut }: { onSignOut: () => void }) {
                 onClick={() => setView('rooms')}
               >
                 ניהול חדרים
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setView('home')}
+              >
+                כתובת הבית
               </button>
               <button
                 type="button"
