@@ -136,9 +136,11 @@ describe('collecting readings', () => {
   it('stores the weather for outdoor rooms only', async () => {
     const garden = await addRoom('garden')
     const indoor = await addRoom('salon')
-    await put(`/climate/rooms/${garden}/location`, {
-      location_type: 'garden',
-    }).catch(() => {})
+    await env.DB.prepare(
+      "UPDATE rooms SET location_type = 'garden' WHERE id = ?",
+    )
+      .bind(garden)
+      .run()
     mockFetch({
       'archive-api.open-meteo.com': {
         daily: {
