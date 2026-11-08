@@ -706,7 +706,7 @@ form.room-profile {
 }
 
 .sensor-picker > button,
-.climate-body > button {
+.room-setup > button {
   justify-self: start;
 }
 
