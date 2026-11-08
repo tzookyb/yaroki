@@ -2,6 +2,9 @@
 
 export const ROOM_NAME_MAX_LENGTH = 40
 
+// Raise it when the AI starts saving new data about plants, so existing plants are filled in too.
+export const ENRICH_VERSION = 1
+
 export const WINDOW_DIRECTIONS = [
   'north',
   'east',
@@ -50,6 +53,7 @@ export type Plant = {
   temp_max: number | null
   description: string | null
   reference_image_url: string | null
+  enriched_version: number
   care_notes: string | null
 }
 
