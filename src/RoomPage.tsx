@@ -8,32 +8,10 @@ import {
   type Plant,
   type RoomDetails,
 } from './api'
+import { CATEGORY_LABELS, LIGHT_LABELS, wateringLabel } from './labels'
 import { ROOMS_CHANGED } from './ManageRooms'
 import { resizePhoto } from './photo'
-
-const CATEGORY_LABELS: Record<string, string> = {
-  foliage: 'צמח עלים',
-  flowering: 'צמח פורח',
-  succulent: 'סוקולנט',
-  cactus: 'קקטוס',
-  herb: 'תבלין',
-  fern: 'שרך',
-  palm: 'דקל',
-  vine: 'מטפס',
-  tree: 'עץ',
-  other: 'אחר',
-}
-
-const LIGHT_LABELS: Record<string, string> = {
-  low: 'אור נמוך',
-  medium: 'אור בינוני',
-  bright_indirect: 'אור בהיר לא ישיר',
-  direct: 'שמש ישירה',
-}
-
-function wateringLabel(days: number) {
-  return days === 1 ? 'השקיה כל יום' : `השקיה כל ${days} ימים`
-}
+import RoomProfileForm from './RoomProfileForm'
 
 function RoomPage({ id }: { id: string }) {
   const [room, setRoom] = useState<RoomDetails | null>(null)
@@ -129,16 +107,25 @@ function RoomPage({ id }: { id: string }) {
       {room?.plants.length === 0 && <p>אין עדיין צמחים בחדר הזה.</p>}
       {room && (
         <>
+          <RoomProfileForm
+            roomId={room.id}
+            profile={room}
+            onSaved={(profile) =>
+              setRoom((current) => current && { ...current, ...profile })
+            }
+          />
           <ul className="plants">
             {room.plants.map(
               (plant) =>
                 plant.photo_key && (
                   <li key={plant.id}>
                     <div className="plant-photo">
-                      <img
-                        src={photoUrl(plant.photo_key)}
-                        alt={plant.name ?? 'צמח ללא שם'}
-                      />
+                      <a href={`#/plants/${plant.id}`}>
+                        <img
+                          src={photoUrl(plant.photo_key)}
+                          alt={plant.name ?? 'צמח ללא שם'}
+                        />
+                      </a>
                       <button
                         type="button"
                         className="delete-plant"
@@ -152,7 +139,9 @@ function RoomPage({ id }: { id: string }) {
                     <div className="plant-info">
                       {plant.name ? (
                         <>
-                          <strong>{plant.name}</strong>
+                          <a href={`#/plants/${plant.id}`}>
+                            <strong>{plant.name}</strong>
+                          </a>
                           {plant.english_name && (
                             <span className="muted english-name">
                               <bdi>{plant.english_name}</bdi>
@@ -178,6 +167,7 @@ function RoomPage({ id }: { id: string }) {
                               {LIGHT_LABELS[plant.light_needs]}
                             </span>
                           )}
+                          {plant.care_notes && <span>{plant.care_notes}</span>}
                         </>
                       ) : (
                         <button

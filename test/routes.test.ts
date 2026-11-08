@@ -139,13 +139,108 @@ describe('deleting', () => {
   })
 })
 
+const PROFILE = {
+  window_direction: 'south',
+  light_level: 'bright_indirect',
+  humidity: 'dry',
+  temp_min: 18,
+  temp_max: 28,
+  near_draft: 0,
+  near_ac: 1,
+  near_heater: 0,
+}
+
+function putProfile(roomId: number, body: unknown) {
+  return api(
+    `/rooms/${roomId}/profile`,
+    { ...json(body), method: 'PUT' },
+    session,
+  )
+}
+
+describe('room profile', () => {
+  it('starts empty, then saves and returns the profile', async () => {
+    const room = await addRoom()
+    expect(
+      await (await api(`/rooms/${room}`, {}, session)).json(),
+    ).toMatchObject({ light_level: null, near_ac: 0 })
+
+    const response = await putProfile(room, PROFILE)
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject(PROFILE)
+    expect(
+      await (await api(`/rooms/${room}`, {}, session)).json(),
+    ).toMatchObject(PROFILE)
+  })
+
+  it('lets every pick be cleared again', async () => {
+    const room = await addRoom()
+    await putProfile(room, PROFILE)
+    const cleared = {
+      ...PROFILE,
+      window_direction: null,
+      light_level: null,
+      humidity: null,
+      temp_min: null,
+      temp_max: null,
+    }
+    expect(await (await putProfile(room, cleared)).json()).toMatchObject(
+      cleared,
+    )
+  })
+
+  it.each([
+    ['an unknown light level', { light_level: 'blinding' }],
+    ['a flag that is not 0 or 1', { near_ac: 2 }],
+    ['a temperature that is too high', { temp_max: 80 }],
+    ['a temperature with decimals', { temp_min: 18.5 }],
+    ['a minimum above the maximum', { temp_min: 30, temp_max: 20 }],
+  ])('refuses %s', async (_, change) => {
+    const room = await addRoom()
+    expect((await putProfile(room, { ...PROFILE, ...change })).status).toBe(400)
+  })
+
+  it('answers 404 for a room that does not exist', async () => {
+    expect((await putProfile(999, PROFILE)).status).toBe(404)
+  })
+})
+
+describe('plant details', () => {
+  it('returns the plant with its room profile', async () => {
+    const room = await addRoom()
+    await putProfile(room, PROFILE)
+    const plant = await addPlant({ room_id: room })
+    const response = await api(`/plants/${plant}`, {}, session)
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      id: plant,
+      room: { light_level: 'bright_indirect', near_ac: 1 },
+    })
+  })
+
+  it('returns room null for a plant without a room', async () => {
+    const plant = await addPlant({})
+    const body = await (await api(`/plants/${plant}`, {}, session)).json()
+    expect(body).toMatchObject({ room: null })
+  })
+
+  it('answers 404 for a missing plant', async () => {
+    expect((await api('/plants/999', {}, session)).status).toBe(404)
+  })
+})
+
 describe('identifying a plant', () => {
   it('saves what Gemini returns', async () => {
     await env.PHOTOS.put('plants/a.webp', new Uint8Array([1]))
     const plant = await addPlant({ photo_key: 'plants/a.webp' })
     // Built inside the call, because a Worker can't read a body made in another request.
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async () =>
-      Response.json({
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      if (String(input).includes('wikipedia.org')) {
+        return Response.json({
+          thumbnail: { source: 'https://upload.wikimedia.org/ficus.jpg' },
+        })
+      }
+      return Response.json({
         candidates: [
           {
             content: {
@@ -159,14 +254,19 @@ describe('identifying a plant', () => {
                     category: 'tree',
                     light_needs: 'bright_indirect',
                     water_every_days: 7,
+                    humidity_needs: 'normal',
+                    temp_min: 16,
+                    temp_max: 27,
+                    description: 'עץ בית גדול.',
+                    care_notes: '',
                   }),
                 },
               ],
             },
           },
         ],
-      }),
-    )
+      })
+    })
 
     const response = await api(
       `/plants/${plant}/identify`,
@@ -178,7 +278,53 @@ describe('identifying a plant', () => {
       name: 'פיקוס כינורי',
       species: 'Ficus lyrata',
       water_every_days: 7,
+      humidity_needs: 'normal',
+      temp_min: 16,
+      temp_max: 27,
+      description: 'עץ בית גדול.',
+      reference_image_url: 'https://upload.wikimedia.org/ficus.jpg',
     })
+  })
+
+  it('tells Gemini about the room and saves the care notes', async () => {
+    const room = await addRoom()
+    await putProfile(room, PROFILE)
+    await env.PHOTOS.put('plants/a.webp', new Uint8Array([1]))
+    const plant = await addPlant({ photo_key: 'plants/a.webp', room_id: room })
+    let prompt = ''
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (_, init) => {
+      prompt = JSON.parse(String(init?.body)).contents[0].parts[0].text
+      return Response.json({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    is_plant: true,
+                    species: 'Ficus lyrata',
+                    common_name: 'פיקוס כינורי',
+                    english_name: 'Fiddle-leaf fig',
+                    category: 'tree',
+                    light_needs: 'bright_indirect',
+                    water_every_days: 7,
+                    care_notes: 'הרחק מהמזגן',
+                  }),
+                },
+              ],
+            },
+          },
+        ],
+      })
+    })
+
+    const response = await api(
+      `/plants/${plant}/identify`,
+      { method: 'POST' },
+      session,
+    )
+    expect(prompt).toContain('facing south')
+    expect(await response.json()).toMatchObject({ care_notes: 'הרחק מהמזגן' })
   })
 
   it('keeps the plant and answers 502 when Gemini fails', async () => {

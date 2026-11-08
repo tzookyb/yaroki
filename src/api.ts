@@ -1,6 +1,22 @@
-import type { Plant, Room, RoomDetails, Task, TaskList } from '../shared/api'
+import type {
+  Plant,
+  PlantDetails,
+  Room,
+  RoomDetails,
+  RoomProfile,
+  Task,
+  TaskList,
+} from '../shared/api'
 
-export type { Plant, Room, RoomDetails, Task, TaskList } from '../shared/api'
+export type {
+  Plant,
+  PlantDetails,
+  Room,
+  RoomDetails,
+  RoomProfile,
+  Task,
+  TaskList,
+} from '../shared/api'
 
 export class HttpError extends Error {
   status: number
@@ -77,6 +93,14 @@ export function renameRoom(id: string, name: string) {
   })
 }
 
+export function saveRoomProfile(id: number, profile: RoomProfile) {
+  return request<RoomProfile>(`/api/rooms/${id}/profile`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(profile),
+  })
+}
+
 export function deleteRoom(id: string) {
   return send(`/api/rooms/${id}`, { method: 'DELETE' })
 }
@@ -87,6 +111,10 @@ export function addPlant(roomId: string, photo: Blob) {
     headers: { 'Content-Type': photo.type },
     body: photo,
   })
+}
+
+export function getPlant(id: string) {
+  return request<PlantDetails>(`/api/plants/${id}`)
 }
 
 export function identifyPlant(id: number) {
