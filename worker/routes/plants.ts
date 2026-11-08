@@ -1,6 +1,12 @@
 import { z } from 'zod'
-import type { Plant, PlantDetails, RoomProfile } from '../../shared/api'
+import {
+  ENRICH_VERSION,
+  type Plant,
+  type PlantDetails,
+  type RoomProfile,
+} from '../../shared/api'
 import { createApp, validate } from '../app'
+import { enrichPlant } from '../enrich'
 import { identifyPlant } from '../gemini'
 import { findReferenceImage } from '../wikipedia'
 import { idParam } from '../schemas'
@@ -90,7 +96,8 @@ export const plantRoutes = createApp()
       `UPDATE plants
        SET name = ?, species = ?, common_name = ?, english_name = ?, category = ?,
            light_needs = ?, water_every_days = ?, humidity_needs = ?, temp_min = ?,
-           temp_max = ?, description = ?, reference_image_url = ?, care_notes = ?
+           temp_max = ?, description = ?, reference_image_url = ?, care_notes = ?,
+           enriched_version = ?
        WHERE id = ?
        RETURNING *`,
     )
@@ -108,10 +115,29 @@ export const plantRoutes = createApp()
         identification.description,
         referenceImage,
         identification.care_notes,
+        ENRICH_VERSION,
         id,
       )
       .first()
     return c.json(updated)
+  })
+
+  // Called by the plant page for plants that miss data added after they were identified.
+  .post('/:id/enrich', validate('param', idParam), async (c) => {
+    const { id } = c.req.valid('param')
+    if (!c.env.GEMINI_API_KEY) {
+      return c.json({ error: 'AI is not set up' }, 503)
+    }
+    try {
+      await enrichPlant(c.env, id)
+    } catch (error) {
+      console.error('Could not enrich plant', error)
+      return c.json({ error: 'AI request failed' }, 502)
+    }
+    const plant = await c.env.DB.prepare('SELECT * FROM plants WHERE id = ?')
+      .bind(id)
+      .first<Plant>()
+    return plant ? c.json(plant) : c.json({ error: 'Plant not found' }, 404)
   })
 
   .on(

@@ -27,13 +27,23 @@ const LIGHT_NEEDS = ['low', 'medium', 'bright_indirect', 'direct']
 const MIN_WATER_EVERY_DAYS = 1
 const MAX_WATER_EVERY_DAYS = 60
 
+const NEEDS_FIELDS = [
+  'humidity_needs',
+  'temp_min',
+  'temp_max',
+  'description',
+  'care_notes',
+] as const
+
+const NEEDS_PROMPT = `humidity_needs is the air humidity the plant is happy with indoors, and temp_min and temp_max are the air temperatures in °C it is comfortable in indoors.
+description is two or three short sentences in Hebrew about the plant and what it needs: light, watering, humidity and temperature.
+care_notes is one or two short sentences in Hebrew with the most useful care tip for this plant.`
+
 const PROMPT = `Identify the house plant in this photo.
 Give species as the Latin botanical name, common_name as the name used in Hebrew, written in Hebrew letters, and english_name as the common name in English.
 water_every_days is how often to water it indoors, in days, for a typical home in Israel.
 If the photo does not show a plant, set is_plant to false.
-humidity_needs is the air humidity the plant is happy with indoors, and temp_min and temp_max are the air temperatures in °C it is comfortable in indoors.
-description is two or three short sentences in Hebrew about the plant and what it needs: light, watering, humidity and temperature.
-care_notes is one or two short sentences in Hebrew with the most useful care tip for this plant.`
+${NEEDS_PROMPT}`
 
 const MAX_CARE_NOTES_CHARS = 300
 const MAX_DESCRIPTION_CHARS = 600
@@ -132,34 +142,20 @@ type GeminiResponse = {
   candidates?: { content?: { parts?: { text?: string }[] } }[]
 }
 
-// Returns null when the photo shows no plant. Throws when Gemini fails or its answer is unusable.
-export async function identifyPlant(
-  photo: ArrayBuffer,
+async function askGemini(
+  parts: unknown[],
+  responseSchema: unknown,
   apiKey: string,
-  room?: RoomProfile,
-): Promise<Identification | null> {
+) {
   const response = await fetch(API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
     signal: AbortSignal.timeout(TIMEOUT_MS),
     body: JSON.stringify({
-      contents: [
-        {
-          parts: [
-            { text: PROMPT + (room ? describeRoom(room) : '') },
-            {
-              inlineData: {
-                mimeType: 'image/webp',
-                // Native, because a loop in JS would use up the 10 ms CPU limit on large photos.
-                data: new Uint8Array(photo).toBase64(),
-              },
-            },
-          ],
-        },
-      ],
+      contents: [{ parts }],
       generationConfig: {
         responseMimeType: 'application/json',
-        responseSchema: RESPONSE_SCHEMA,
+        responseSchema,
       },
     }),
   })
@@ -175,8 +171,40 @@ export async function identifyPlant(
   if (!text) {
     throw new Error('Gemini returned no text')
   }
+  return JSON.parse(text)
+}
 
-  const answer = JSON.parse(text)
+function cleanNeeds(answer: Record<string, unknown>) {
+  return {
+    humidity_needs: oneOf(HUMIDITY_LEVELS, answer.humidity_needs) ?? null,
+    ...cleanTemperatures(answer.temp_min, answer.temp_max),
+    description:
+      cleanText(answer.description).slice(0, MAX_DESCRIPTION_CHARS) || null,
+    care_notes:
+      cleanText(answer.care_notes).slice(0, MAX_CARE_NOTES_CHARS) || null,
+  }
+}
+
+// Returns null when the photo shows no plant. Throws when Gemini fails or its answer is unusable.
+export async function identifyPlant(
+  photo: ArrayBuffer,
+  apiKey: string,
+  room?: RoomProfile,
+): Promise<Identification | null> {
+  const answer = await askGemini(
+    [
+      { text: PROMPT + (room ? describeRoom(room) : '') },
+      {
+        inlineData: {
+          mimeType: 'image/webp',
+          // Native, because a loop in JS would use up the 10 ms CPU limit on large photos.
+          data: new Uint8Array(photo).toBase64(),
+        },
+      },
+    ],
+    RESPONSE_SCHEMA,
+    apiKey,
+  )
   if (answer.is_plant === false) {
     return null
   }
@@ -193,13 +221,36 @@ export async function identifyPlant(
     category: oneOf(CATEGORIES, answer.category) ?? 'other',
     light_needs: oneOf(LIGHT_NEEDS, answer.light_needs) ?? 'medium',
     water_every_days: cleanWaterEveryDays(answer.water_every_days),
-    humidity_needs: oneOf(HUMIDITY_LEVELS, answer.humidity_needs) ?? null,
-    ...cleanTemperatures(answer.temp_min, answer.temp_max),
-    description:
-      cleanText(answer.description).slice(0, MAX_DESCRIPTION_CHARS) || null,
-    care_notes:
-      cleanText(answer.care_notes).slice(0, MAX_CARE_NOTES_CHARS) || null,
+    ...cleanNeeds(answer),
   }
+}
+
+export type PlantNeeds = ReturnType<typeof cleanNeeds>
+
+const NEEDS_SCHEMA = {
+  type: 'OBJECT',
+  properties: Object.fromEntries(
+    NEEDS_FIELDS.map((field) => [field, RESPONSE_SCHEMA.properties[field]]),
+  ),
+  required: [...NEEDS_FIELDS],
+}
+
+// For plants that were identified before these fields existed. It never renames the plant.
+export async function describePlant(
+  species: string,
+  apiKey: string,
+  room?: RoomProfile,
+): Promise<PlantNeeds> {
+  const answer = await askGemini(
+    [
+      {
+        text: `The house plant is ${species}.\n${NEEDS_PROMPT}${room ? describeRoom(room) : ''}`,
+      },
+    ],
+    NEEDS_SCHEMA,
+    apiKey,
+  )
+  return cleanNeeds(answer)
 }
 
 function cleanText(value: unknown) {

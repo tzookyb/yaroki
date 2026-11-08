@@ -1,3 +1,4 @@
+import { ENRICH_VERSION } from '../shared/api'
 import { useEffect, useState } from 'react'
 import {
   lightFit,
@@ -5,7 +6,7 @@ import {
   temperatureFit,
   type Fit,
 } from '../shared/plantFit'
-import { getPlant, identifyPlant, photoUrl, type PlantDetails } from './api'
+import { getPlant, enrichPlant, type PlantDetails } from './api'
 import {
   CATEGORY_LABELS,
   HUMIDITY_LABELS,
@@ -42,27 +43,40 @@ function Need({
 
 function PlantPage({ id }: { id: string }) {
   const [plant, setPlant] = useState<PlantDetails | null>(null)
-  const [identifying, setIdentifying] = useState(false)
+  const [enriching, setEnriching] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    getPlant(id)
-      .then(setPlant)
-      .catch(() => setError('לא הצלחנו לטעון את הצמח.'))
-  }, [id])
-
-  async function identifyAgain() {
-    setIdentifying(true)
-    setError(null)
-    try {
-      const updated = await identifyPlant(Number(id))
-      setPlant((current) => current && { ...current, ...updated })
-    } catch {
-      setError('לא הצלחנו לזהות את הצמח.')
-    } finally {
-      setIdentifying(false)
+    let cancelled = false
+    async function load() {
+      let loaded: PlantDetails
+      try {
+        loaded = await getPlant(id)
+      } catch {
+        setError('לא הצלחנו לטעון את הצמח.')
+        return
+      }
+      setPlant(loaded)
+      // Fills in data that was added after this plant was identified, without renaming it.
+      if (loaded.species && loaded.enriched_version < ENRICH_VERSION) {
+        setEnriching(true)
+        try {
+          const updated = await enrichPlant(Number(id))
+          if (!cancelled) {
+            setPlant((current) => current && { ...current, ...updated })
+          }
+        } catch {
+          // The data is filled in by the daily run if this fails.
+        } finally {
+          setEnriching(false)
+        }
+      }
     }
-  }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [id])
 
   const room = plant?.room
   const hasTemperature = plant?.temp_min != null && plant.temp_max != null
@@ -85,20 +99,18 @@ function PlantPage({ id }: { id: string }) {
               )}
             </p>
           )}
-          <div className="plant-compare">
-            {plant.photo_key && (
-              <figure>
-                <img src={photoUrl(plant.photo_key)} alt="התמונה שלך" />
-                <figcaption>התמונה שלך</figcaption>
-              </figure>
-            )}
-            {plant.reference_image_url && (
-              <figure>
-                <img src={plant.reference_image_url} alt="תמונה לדוגמה" />
-                <figcaption>תמונה לדוגמה (ויקיפדיה)</figcaption>
-              </figure>
-            )}
-          </div>
+          {plant.reference_image_url ? (
+            <figure className="reference-photo">
+              <img src={plant.reference_image_url} alt="תמונה לדוגמה" />
+              <figcaption>
+                תמונה לדוגמה של {plant.name} (ויקיפדיה). אם זה לא נראה כמו הצמח
+                שלך, הזיהוי כנראה שגוי.
+              </figcaption>
+            </figure>
+          ) : (
+            <p className="muted">לא מצאנו תמונה לדוגמה לצמח הזה.</p>
+          )}
+          {enriching && <p className="muted">מעדכנים פרטים על הצמח…</p>}
           {plant.description && <p>{plant.description}</p>}
           {plant.care_notes && <p className="care-notes">{plant.care_notes}</p>}
           <h2>מה הצמח צריך</h2>
@@ -142,14 +154,6 @@ function PlantPage({ id }: { id: string }) {
               הצמח לא משויך לחדר, אז אין השוואה לתנאי החדר.
             </p>
           )}
-          <button
-            type="button"
-            className="secondary"
-            disabled={identifying}
-            onClick={identifyAgain}
-          >
-            {identifying ? 'מזהים…' : 'זיהוי מחדש'}
-          </button>
         </>
       )}
     </>
