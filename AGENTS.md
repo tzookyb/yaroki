@@ -39,7 +39,7 @@ The cron handlers in `worker/index.ts` are stubs. The `push_subscriptions` table
 
 Tasks are computed from plant fields in `worker/tasks.ts`, not stored. A new task type goes in `TASK_TYPES` there, with its Hebrew labels in `src/NextTasks.tsx`. `plants.last_watered` is a `YYYY-MM-DD` date in Asia/Jerusalem, and a plant never marked as watered is due today. Marking a task done also logs a row in `events`. The count of open tasks due today or earlier (`shared/taskBadge.ts`) is set as the app icon badge (`src/appBadge.ts`, only while the app runs). A task done today stays in the list, grayed, and can be undone that day only: undo deletes today's events and sets `last_watered` back to the latest earlier event.
 
-The logo is the word ירוקי in Suez One (SIL OFL), outlined to SVG paths, so nothing loads a font: `public/favicon.svg`, the PNG icons in `public/`, `src/Logo.tsx` (header) and `src/devFavicon.ts` (yellow dev variant). `icon-maskable-512.png` has the word smaller to stay inside the maskable safe zone.
+The logo is the word ירוקי in Varela Round (SIL OFL), outlined to SVG paths, so nothing loads a font: `public/favicon.svg`, the PNG icons in `public/`, `src/Logo.tsx` (header) and `src/devFavicon.ts` (yellow dev variant). `icon-maskable-512.png` has the word smaller to stay inside the maskable safe zone.
 
 ## Commands
 
