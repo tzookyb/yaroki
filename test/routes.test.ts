@@ -205,13 +205,42 @@ describe('room profile', () => {
   })
 })
 
+describe('plant details', () => {
+  it('returns the plant with its room profile', async () => {
+    const room = await addRoom()
+    await putProfile(room, PROFILE)
+    const plant = await addPlant({ room_id: room })
+    const response = await api(`/plants/${plant}`, {}, session)
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      id: plant,
+      room: { light_level: 'bright_indirect', near_ac: 1 },
+    })
+  })
+
+  it('returns room null for a plant without a room', async () => {
+    const plant = await addPlant({})
+    const body = await (await api(`/plants/${plant}`, {}, session)).json()
+    expect(body).toMatchObject({ room: null })
+  })
+
+  it('answers 404 for a missing plant', async () => {
+    expect((await api('/plants/999', {}, session)).status).toBe(404)
+  })
+})
+
 describe('identifying a plant', () => {
   it('saves what Gemini returns', async () => {
     await env.PHOTOS.put('plants/a.webp', new Uint8Array([1]))
     const plant = await addPlant({ photo_key: 'plants/a.webp' })
     // Built inside the call, because a Worker can't read a body made in another request.
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async () =>
-      Response.json({
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      if (String(input).includes('wikipedia.org')) {
+        return Response.json({
+          thumbnail: { source: 'https://upload.wikimedia.org/ficus.jpg' },
+        })
+      }
+      return Response.json({
         candidates: [
           {
             content: {
@@ -225,14 +254,19 @@ describe('identifying a plant', () => {
                     category: 'tree',
                     light_needs: 'bright_indirect',
                     water_every_days: 7,
+                    humidity_needs: 'normal',
+                    temp_min: 16,
+                    temp_max: 27,
+                    description: 'עץ בית גדול.',
+                    care_notes: '',
                   }),
                 },
               ],
             },
           },
         ],
-      }),
-    )
+      })
+    })
 
     const response = await api(
       `/plants/${plant}/identify`,
@@ -244,6 +278,11 @@ describe('identifying a plant', () => {
       name: 'פיקוס כינורי',
       species: 'Ficus lyrata',
       water_every_days: 7,
+      humidity_needs: 'normal',
+      temp_min: 16,
+      temp_max: 27,
+      description: 'עץ בית גדול.',
+      reference_image_url: 'https://upload.wikimedia.org/ficus.jpg',
     })
   })
 

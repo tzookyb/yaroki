@@ -419,3 +419,67 @@ button.secondary {
   align-items: center;
   gap: 0.5rem;
 }
+
+.info-button {
+  min-width: 1.5rem;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 0.8rem;
+  font-style: italic;
+  line-height: 1.5rem;
+}
+
+.info-text {
+  flex-basis: 100%;
+}
+
+.room-profile .checkbox {
+  flex-wrap: wrap;
+}
+
+.plant-compare {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.plant-compare figure {
+  margin: 0;
+}
+
+.plant-compare img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 0.5rem;
+}
+
+.plant-compare figcaption {
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.care-notes {
+  font-weight: 600;
+}
+
+.needs li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+}
+
+.need-label {
+  min-width: 5rem;
+}
+
+.fit-ok {
+  color: #2e7d32;
+}
+
+.fit-low,
+.fit-high {
+  color: #b26a00;
+}

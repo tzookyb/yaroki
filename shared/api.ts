@@ -42,8 +42,15 @@ export type Plant = {
   category: string | null
   light_needs: string | null
   water_every_days: number | null
+  humidity_needs: (typeof HUMIDITY_LEVELS)[number] | null
+  temp_min: number | null
+  temp_max: number | null
+  description: string | null
+  reference_image_url: string | null
   care_notes: string | null
 }
+
+export type PlantDetails = Plant & { room: RoomProfile | null }
 
 export type RoomDetails = Omit<Room, 'plant_count'> & {
   plants: Plant[]

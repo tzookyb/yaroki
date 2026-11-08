@@ -1,5 +1,6 @@
 import type {
   Plant,
+  PlantDetails,
   Room,
   RoomDetails,
   RoomProfile,
@@ -9,6 +10,7 @@ import type {
 
 export type {
   Plant,
+  PlantDetails,
   Room,
   RoomDetails,
   RoomProfile,
@@ -109,6 +111,10 @@ export function addPlant(roomId: string, photo: Blob) {
     headers: { 'Content-Type': photo.type },
     body: photo,
   })
+}
+
+export function getPlant(id: string) {
+  return request<PlantDetails>(`/api/plants/${id}`)
 }
 
 export function identifyPlant(id: number) {

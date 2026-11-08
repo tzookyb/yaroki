@@ -6,6 +6,8 @@ import {
   ROOM_TEMP_MIN,
   WINDOW_DIRECTIONS,
 } from '../shared/api'
+import { HUMIDITY_LABELS } from './labels'
+import InfoHint from './InfoHint'
 import { saveRoomProfile, type RoomProfile } from './api'
 
 const WINDOW_LABELS = {
@@ -20,7 +22,6 @@ const LIGHT_LABELS = {
   bright_indirect: 'אור בהיר לא ישיר',
   low: 'אור נמוך',
 }
-const HUMIDITY_LABELS = { dry: 'יבש', normal: 'רגיל', humid: 'לח' }
 
 function Select<T extends string>({
   label,
@@ -96,9 +97,21 @@ function RoomProfileForm({
   }
 
   const flags = [
-    ['near_draft', 'יש טיוטה'],
-    ['near_ac', 'מזגן קרוב לצמחים'],
-    ['near_heater', 'תנור או רדיאטור קרוב לצמחים'],
+    [
+      'near_draft',
+      'יש זרם אוויר',
+      'אוויר שנע כל הזמן ליד הצמחים, למשל ליד דלת או חלון שנפתחים הרבה. זרם אוויר מייבש עלים ומקרר צמחים רגישים.',
+    ],
+    [
+      'near_ac',
+      'מזגן קרוב לצמחים',
+      'המזגן נושף ישר על הצמחים, או נמצא במרחק של עד כמטר-שניים מהם. אוויר קר ויבש מזיק לרוב הצמחים.',
+    ],
+    [
+      'near_heater',
+      'תנור או רדיאטור קרוב לצמחים',
+      'תנור, רדיאטור או מפזר חום נמצאים במרחק של עד כמטר-שניים מהצמחים. חום יבש מייבש את העלים ואת האדמה.',
+    ],
   ] as const
 
   return (
@@ -154,17 +167,20 @@ function RoomProfileForm({
             />
           </label>
         </div>
-        {flags.map(([key, label]) => (
-          <label key={key} className="checkbox">
-            <input
-              type="checkbox"
-              checked={draft[key] === 1}
-              onChange={(event) =>
-                change({ [key]: event.target.checked ? 1 : 0 })
-              }
-            />
-            {label}
-          </label>
+        {flags.map(([key, label, hint]) => (
+          <div key={key}>
+            <label className="checkbox">
+              <input
+                type="checkbox"
+                checked={draft[key] === 1}
+                onChange={(event) =>
+                  change({ [key]: event.target.checked ? 1 : 0 })
+                }
+              />
+              {label}
+              <InfoHint text={hint} />
+            </label>
+          </div>
         ))}
         {tempsInverted && <p role="alert">המינימום גבוה מהמקסימום.</p>}
         {error && <p role="alert">{error}</p>}

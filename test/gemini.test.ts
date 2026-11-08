@@ -12,6 +12,10 @@ const GOOD_ANSWER = {
   category: 'tree',
   light_needs: 'bright_indirect',
   water_every_days: 7,
+  humidity_needs: 'humid',
+  temp_min: 24,
+  temp_max: 15,
+  description: ' צמח גדול. ',
   care_notes: ' אור בהיר ללא שמש חמה. ',
 }
 
@@ -87,6 +91,10 @@ describe('identifyPlant', () => {
       category: 'tree',
       light_needs: 'bright_indirect',
       water_every_days: 7,
+      humidity_needs: 'humid',
+      temp_min: 15,
+      temp_max: 24,
+      description: 'צמח גדול.',
       care_notes: 'אור בהיר ללא שמש חמה.',
     })
   })
@@ -96,6 +104,21 @@ describe('identifyPlant', () => {
     await identifyPlant(PHOTO, 'key', { ...EMPTY_ROOM, humidity: 'dry' })
     const body = JSON.parse(String(fetch.mock.calls[0][1]?.body))
     expect(body.contents[0].parts[0].text).toContain('Humidity: dry')
+  })
+
+  it('drops needs that are unusable instead of failing', async () => {
+    mockGemini({
+      ...GOOD_ANSWER,
+      humidity_needs: 'soggy',
+      temp_min: 'cold',
+      description: '',
+    })
+    expect(await identifyPlant(PHOTO, 'key')).toMatchObject({
+      humidity_needs: null,
+      temp_min: null,
+      temp_max: null,
+      description: null,
+    })
   })
 
   it('stores missing care notes as null', async () => {

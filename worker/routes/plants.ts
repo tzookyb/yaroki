@@ -1,7 +1,8 @@
 import { z } from 'zod'
-import type { Plant, RoomProfile } from '../../shared/api'
+import type { Plant, PlantDetails, RoomProfile } from '../../shared/api'
 import { createApp, validate } from '../app'
 import { identifyPlant } from '../gemini'
+import { findReferenceImage } from '../wikipedia'
 import { idParam } from '../schemas'
 import { setTaskDone } from '../tasks'
 
@@ -13,6 +14,23 @@ export const plantRoutes = createApp()
       'SELECT * FROM plants ORDER BY created_at DESC',
     ).all<Plant>()
     return c.json(results)
+  })
+
+  .get('/:id', validate('param', idParam), async (c) => {
+    const { id } = c.req.valid('param')
+    const plant = await c.env.DB.prepare('SELECT * FROM plants WHERE id = ?')
+      .bind(id)
+      .first<Plant>()
+    if (!plant) {
+      return c.json({ error: 'Plant not found' }, 404)
+    }
+    const room = plant.room_id
+      ? await c.env.DB.prepare('SELECT * FROM rooms WHERE id = ?')
+          .bind(plant.room_id)
+          .first<RoomProfile>()
+      : null
+    const details: PlantDetails = { ...plant, room }
+    return c.json(details)
   })
 
   .delete('/:id', validate('param', idParam), async (c) => {
@@ -67,10 +85,12 @@ export const plantRoutes = createApp()
     if (!identification) {
       return c.json({ error: 'No plant in photo' }, 422)
     }
+    const referenceImage = await findReferenceImage(identification.species)
     const updated = await c.env.DB.prepare(
       `UPDATE plants
        SET name = ?, species = ?, common_name = ?, english_name = ?, category = ?,
-           light_needs = ?, water_every_days = ?, care_notes = ?
+           light_needs = ?, water_every_days = ?, humidity_needs = ?, temp_min = ?,
+           temp_max = ?, description = ?, reference_image_url = ?, care_notes = ?
        WHERE id = ?
        RETURNING *`,
     )
@@ -82,6 +102,11 @@ export const plantRoutes = createApp()
         identification.category,
         identification.light_needs,
         identification.water_every_days,
+        identification.humidity_needs,
+        identification.temp_min,
+        identification.temp_max,
+        identification.description,
+        referenceImage,
         identification.care_notes,
         id,
       )
