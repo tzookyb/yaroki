@@ -162,6 +162,20 @@ select {
   font-size: 0.9375rem;
 }
 
+/* A drawn chevron, because the native arrow sits flush against the edge in right-to-left. */
+select {
+  appearance: none;
+  padding-inline-end: 2.5rem;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%239db5a4' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    left 0.9rem center / 0.75rem auto no-repeat var(--field);
+  cursor: pointer;
+}
+
+select:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 input::placeholder {
   color: var(--muted);
 }
