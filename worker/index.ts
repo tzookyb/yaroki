@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/cloudflare'
 import { secureHeaders } from 'hono/secure-headers'
 import { createApp } from './app'
+import { enrichPendingPlants } from './enrich'
 import { photoRoutes } from './routes/photos'
 import { plantRoutes } from './routes/plants'
 import { roomRoutes } from './routes/rooms'
@@ -42,11 +43,12 @@ const app = createApp()
 const handler = {
   fetch: app.fetch,
 
-  async scheduled(controller) {
+  async scheduled(controller, env) {
     switch (controller.cron) {
       case DAILY_WATERING_CHECK:
         // TODO: push watering reminders for plants that are due.
         console.log('daily watering check')
+        await enrichPendingPlants(env)
         break
       case WEEKLY_AI_CARE_CHECK:
         // TODO: run the AI care check, push only if action is needed.

@@ -117,6 +117,10 @@ export function getPlant(id: string) {
   return request<PlantDetails>(`/api/plants/${id}`)
 }
 
+export function enrichPlant(id: number) {
+  return request<Plant>(`/api/plants/${id}/enrich`, { method: 'POST' })
+}
+
 export function identifyPlant(id: number) {
   return request<Plant>(`/api/plants/${id}/identify`, { method: 'POST' })
 }
