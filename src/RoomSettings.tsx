@@ -1,74 +1,101 @@
-import { useEffect, useState } from 'react'
-import { getRooms, type Room } from './api'
+import { useEffect, useState, type FormEvent } from 'react'
+import { ROOM_NAME_MAX_LENGTH } from '../shared/api'
+import { createRoom, getRooms, type Room } from './api'
 import { RoomLocationSetup } from './RoomClimate'
 import RoomProfileForm from './RoomProfileForm'
 import { ROOMS_CHANGED } from './ManageRooms'
 
-function RoomSettings() {
-  const [rooms, setRooms] = useState<Room[] | null>(null)
-  const [roomId, setRoomId] = useState<number | null>(null)
+function NewRoomForm({ onCreated }: { onCreated: (id: number) => void }) {
+  const [name, setName] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault()
+    setSaving(true)
+    setError(null)
+    try {
+      const room = await createRoom(name)
+      window.dispatchEvent(new Event(ROOMS_CHANGED))
+      onCreated(room.id)
+    } catch {
+      setError('לא הצלחנו להוסיף את החדר.')
+      setSaving(false)
+    }
+  }
+
+  return (
+    <form className="room-setup" onSubmit={handleSubmit}>
+      <label>
+        שם החדר
+        <input
+          maxLength={ROOM_NAME_MAX_LENGTH}
+          placeholder="סלון"
+          autoFocus
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+        />
+      </label>
+      {error && <p role="alert">{error}</p>}
+      <button type="submit" disabled={saving || !name.trim()}>
+        {saving ? 'יוצרים…' : 'יצירת חדר'}
+      </button>
+      <p className="muted">
+        אחרי היצירה אפשר להגדיר את תנאי החדר והחיישנים שלו.
+      </p>
+    </form>
+  )
+}
+
+function RoomSetup({ roomId }: { roomId: number }) {
+  const [room, setRoom] = useState<Room | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    function load() {
-      getRooms()
-        .then(setRooms)
-        .catch(() => setError('לא הצלחנו לטעון את החדרים.'))
-    }
-    load()
-    window.addEventListener(ROOMS_CHANGED, load)
-    return () => window.removeEventListener(ROOMS_CHANGED, load)
-  }, [])
-
-  const room = rooms?.find((other) => other.id === roomId) ?? rooms?.[0]
-
-  function update(fields: Partial<Room>) {
-    setRooms(
-      (current) =>
-        current &&
-        current.map((other) =>
-          other.id === room?.id ? { ...other, ...fields } : other,
-        ),
-    )
-  }
+    getRooms()
+      .then((rooms) =>
+        setRoom(rooms.find((other) => other.id === roomId) ?? null),
+      )
+      .catch(() => setError('לא הצלחנו לטעון את החדר.'))
+  }, [roomId])
 
   return (
     <div className="room-setup">
       {error && <p role="alert">{error}</p>}
-      {rooms?.length === 0 && <p>אין עדיין חדרים.</p>}
-      {room && rooms && (
+      {room && (
         <>
-          <label className="room-profile">
-            חדר
-            <select
-              value={room.id}
-              onChange={(event) => setRoomId(Number(event.target.value))}
-            >
-              {rooms.map((other) => (
-                <option key={other.id} value={other.id}>
-                  {other.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <h3>{room.name}</h3>
           <RoomLocationSetup
-            key={`location-${room.id}`}
             roomId={room.id}
             locationType={room.location_type}
             onLocationChange={(location_type) => {
-              update({ location_type })
+              setRoom({ ...room, location_type })
               window.dispatchEvent(new Event(ROOMS_CHANGED))
             }}
           />
           <RoomProfileForm
-            key={`profile-${room.id}`}
             roomId={room.id}
             profile={room}
-            onSaved={(profile) => update(profile)}
+            onSaved={(profile) => setRoom({ ...room, ...profile })}
           />
         </>
       )}
     </div>
+  )
+}
+
+// `target` is a room id, or 'new' for the add-room step.
+function RoomSettings({
+  target,
+  onCreated,
+}: {
+  target: number | 'new'
+  onCreated: (id: number) => void
+}) {
+  return target === 'new' ? (
+    <NewRoomForm onCreated={onCreated} />
+  ) : (
+    <RoomSetup key={target} roomId={target} />
   )
 }
 
