@@ -344,6 +344,10 @@ describe('home location', () => {
         geometry: { coordinates: [34.8, 32.1] },
         properties: { name: 'Tel Aviv', country: 'Israel' },
       },
+      {
+        geometry: { coordinates: [34.81, 32.11] },
+        properties: { name: 'Tel Aviv', country: 'Israel' },
+      },
     ],
   }
 
@@ -406,7 +410,7 @@ describe('home location', () => {
     ])
   })
 
-  it('searches addresses through Photon', async () => {
+  it('searches addresses through Photon, one result per label', async () => {
     mockFetch({ 'photon.komoot.io': PHOTON })
     const response = await api('/climate/places?q=dizengoff', {}, session)
     expect(await response.json()).toEqual([

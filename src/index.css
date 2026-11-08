@@ -890,10 +890,6 @@ form.room-profile {
   gap: 1rem;
 }
 
-.home-location h2 {
-  margin: 0;
-}
-
 .home-location > p:not(.muted, [role='alert']) {
   padding: 0.75rem 1.15rem;
   border-radius: var(--radius-small);
