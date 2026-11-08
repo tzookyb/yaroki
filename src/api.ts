@@ -193,3 +193,31 @@ export function saveHomeLocation(home: HomeLocation) {
     body: JSON.stringify(home),
   })
 }
+
+export async function getPushKey() {
+  return (await request<{ key: string }>('/api/push/key')).key
+}
+
+export function savePushSubscription(subscription: PushSubscriptionJSON) {
+  return send('/api/push/subscription', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(subscription),
+  })
+}
+
+export function deletePushSubscription(endpoint: string) {
+  return send('/api/push/unsubscribe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ endpoint }),
+  })
+}
+
+export function sendTestPush(endpoint: string) {
+  return send('/api/push/test', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ endpoint }),
+  })
+}

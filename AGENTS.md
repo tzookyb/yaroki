@@ -31,11 +31,11 @@ Room climate: `room_readings` holds measured temperature and humidity per room, 
 Planned:
 
 - Pl@ntNet as an optional extra for ID accuracy
-- Watering reminders by Web Push (VAPID), with a "Watered ✓" notification action that updates the DB
+- A "Watered ✓" action on the reminder notification that updates the DB
 - Weekly AI care check (fertilize, repot, pests, seasonal tips) that pushes only if action is needed
 - Optional: "check my plant" photo diagnosis, Google Calendar integration
 
-The cron handlers in `worker/index.ts` are stubs. The `push_subscriptions` table and the `care_notes` column exist but nothing uses them yet.
+Watering reminders: the daily cron (`sendDueReminders` in `worker/push.ts`) sends a Web Push to every row of `push_subscriptions` when `dueTaskCount` is above zero. Pushes have no payload, so nothing is encrypted and the Worker stays inside the free CPU limit; `public/push-sw.js` (pulled into the generated service worker by `importScripts` in `vite.config.ts`) fetches `/api/tasks` and builds the text. A payload would need RFC 8291 encryption, and the subscription `keys` are already stored for that. Endpoints are limited to known push services (`isPushServiceUrl`), because the Worker POSTs to them. Devices subscribe from the settings drawer (`src/PushSettings.tsx`) and unsubscribe on sign-out. The weekly AI care cron is still a stub, and nothing uses `care_notes` for it yet.
 
 Tasks are computed from plant fields in `worker/tasks.ts`, not stored. A new task type goes in `TASK_TYPES` there, with its Hebrew labels in `src/NextTasks.tsx`. `plants.last_watered` is a `YYYY-MM-DD` date in Asia/Jerusalem, and a plant never marked as watered is due today. Marking a task done also logs a row in `events`. The count of open tasks due today or earlier (`shared/taskBadge.ts`) is set as the app icon badge (`src/appBadge.ts`, only while the app runs). A task done today stays in the list, grayed, and can be undone that day only: undo deletes today's events and sets `last_watered` back to the latest earlier event.
 
@@ -76,7 +76,7 @@ In `npm run dev` the favicon is yellow instead of green (`src/main.tsx`). Prod b
 - Login is guarded by the Cloudflare rate limit (10/min per IP, per location) and the 20-character rule. There is no lockout on purpose: a lockout lets anyone lock the owner out.
 - Each sign-in creates a random token. The cookie holds it, and the `sessions` table holds only its SHA-256 hash, valid for 365 days. Sign-out deletes this device's row, "sign out everywhere" (`/api/logout-all`) deletes all rows. Changing `APP_PASSWORD` does not sign anyone out. A missing `APP_PASSWORD` locks the API, even for signed-in devices.
 - Sentry is off until it has a DSN: `SENTRY_DSN` (Worker secret) for the API and cron, `VITE_SENTRY_DSN` (build-time env var) for the app. `shared/sentry.ts` keeps IPs, cookies, headers and bodies out of reports, because they hold the session token and the password. The Worker needs the `nodejs_als` flag for it. `Sentry.ErrorBoundary` in `src/main.tsx` shows `src/ErrorFallback.tsx` instead of a blank screen, with or without a DSN.
-- `GEMINI_API_KEY` powers plant ID. Without it the identify route returns 503 and the rest of the app still works. `VAPID_PRIVATE_KEY` is reserved for push.
+- `GEMINI_API_KEY` powers plant ID. Without it the identify route returns 503 and the rest of the app still works. `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` (made with `scripts/generate-vapid.mjs`) enable push; without them the push routes return 503 and the cron skips reminders.
 
 ## Free-tier limits
 

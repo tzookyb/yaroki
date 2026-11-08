@@ -26,6 +26,10 @@ Copy `.dev.vars.example` to `.dev.vars` for local dev. In production use `npx wr
 
 Plant identification needs `GEMINI_API_KEY`, a free key from [Google AI Studio](https://aistudio.google.com/apikey).
 
+## Push notifications
+
+Watering reminders use Web Push. Generate a key pair once with `node scripts/generate-vapid.mjs`, then set both values as secrets with `npx wrangler secret put VAPID_PUBLIC_KEY` and `npx wrangler secret put VAPID_PRIVATE_KEY`. Without them the settings page says push is not set up. Each device turns notifications on in its own settings, and the Worker sends one push per device every morning when care is due. Push does not work in `npm run dev`, which has no service worker.
+
 ## Sign-in
 
 `APP_PASSWORD` protects every API route except `/api/health` and `/api/login`. If it is unset, nobody can sign in. Each device gets its own session, and "sign out everywhere" in the settings ends them all.
@@ -39,6 +43,6 @@ The deploy job needs, in the repo's GitHub settings:
 - Secrets `CLOUDFLARE_API_TOKEN` (a token from the "Edit Cloudflare Workers" template, plus D1 edit) and `CLOUDFLARE_ACCOUNT_ID`
 - Optional variable `VITE_SENTRY_DSN` to turn on error reports from the app
 
-Worker secrets are still set once with `npx wrangler secret put <NAME>`: `APP_PASSWORD`, `GEMINI_API_KEY`, and optionally `SENTRY_DSN`.
+Worker secrets are still set once with `npx wrangler secret put <NAME>`: `APP_PASSWORD`, `GEMINI_API_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and optionally `SENTRY_DSN`.
 
 The very first deploy can be done by hand with `npx wrangler login`, `npm run deploy` and `npm run db:migrate:remote`. It creates the D1 database and R2 bucket from the bindings in `wrangler.jsonc`.

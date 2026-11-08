@@ -884,7 +884,8 @@ form.room-profile {
 
 /* Home location */
 
-.home-location {
+.home-location,
+.push-settings {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 1rem;

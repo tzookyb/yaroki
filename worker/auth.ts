@@ -103,7 +103,11 @@ export async function signOut(request: Request, env: Env) {
 
 // For a lost or stolen device: ends every session, this one included.
 export async function signOutEverywhere(env: Env) {
-  await env.DB.prepare('DELETE FROM sessions').run()
+  // Devices that are signed out must stop getting reminders too.
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM sessions'),
+    env.DB.prepare('DELETE FROM push_subscriptions'),
+  ])
   return Response.json(
     { ok: true },
     { headers: { 'Set-Cookie': CLEAR_COOKIE } },

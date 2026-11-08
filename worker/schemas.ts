@@ -8,6 +8,7 @@ import {
   ROOM_TEMP_MIN,
   WINDOW_DIRECTIONS,
 } from '../shared/api'
+import { isPushServiceUrl } from './push'
 
 export const idParam = z.object({ id: z.coerce.number().int().positive() })
 
@@ -53,4 +54,19 @@ export const homeLocationBody = z.object({
   label: z.string().trim().min(1).max(200),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
+})
+
+const pushEndpoint = z
+  .string()
+  .max(2048)
+  .refine(isPushServiceUrl, { message: 'not a known push service' })
+
+export const pushEndpointBody = z.object({ endpoint: pushEndpoint })
+
+export const pushSubscriptionBody = z.object({
+  endpoint: pushEndpoint,
+  keys: z.object({
+    p256dh: z.string().min(1).max(200),
+    auth: z.string().min(1).max(100),
+  }),
 })

@@ -1,10 +1,13 @@
 import { cloudflareTest, readD1Migrations } from '@cloudflare/vitest-plugin'
+import { generateKeyPairSync } from 'node:crypto'
 import { defineConfig } from 'vitest/config'
 
 // Tests run inside the Workers runtime, with a local D1, R2 and rate limiter from wrangler.jsonc.
 // Each test file starts from an empty database with all migrations applied (test/setup.ts).
 export default defineConfig(async () => {
   const migrations = await readD1Migrations('migrations')
+  // A throwaway VAPID pair, new for every run.
+  const vapid = generateKeyPairSync('ec', { namedCurve: 'P-256' })
   return {
     plugins: [
       cloudflareTest({
@@ -15,6 +18,11 @@ export default defineConfig(async () => {
             GEMINI_API_KEY: 'test-gemini-key',
             SENTRY_DSN: '',
             SENSIBO_API_KEY: 'test-sensibo-key',
+            VAPID_PUBLIC_KEY: vapid.publicKey
+              .export({ format: 'der', type: 'spki' })
+              .subarray(-65)
+              .toString('base64url'),
+            VAPID_PRIVATE_KEY: vapid.privateKey.export({ format: 'jwk' }).d!,
             TEST_MIGRATIONS: migrations,
           },
         },

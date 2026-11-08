@@ -2,6 +2,7 @@
 # In production set these with: npx wrangler secret put <NAME>
 APP_PASSWORD=
 GEMINI_API_KEY=
+VAPID_PUBLIC_KEY=
 VAPID_PRIVATE_KEY=
 SENTRY_DSN=
 SENSIBO_API_KEY=
