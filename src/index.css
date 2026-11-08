@@ -521,7 +521,7 @@ label select {
 
 /* Collapsible room sections */
 
-.room-profile {
+details.room-profile {
   margin-bottom: 0.75rem;
   border-radius: var(--radius);
   background: var(--surface);
@@ -558,23 +558,42 @@ label select {
   translate: 0 0.15rem;
 }
 
-.room-profile form,
 .room-climate .climate-body {
   display: grid;
   gap: 1rem;
   padding: 0.25rem 1.25rem 1.25rem;
 }
 
-.room-profile form p {
+/* Room conditions and sensors, in the settings drawer */
+
+.room-setup {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+form.room-profile,
+div.room-climate {
+  padding: 1.25rem;
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+form.room-profile p {
   margin: 0;
   font-size: 0.8125rem;
 }
 
-.room-profile form > button {
+form.room-profile > button {
   justify-self: start;
 }
 
-.room-profile label,
+form.room-profile {
+  display: grid;
+  gap: 1rem;
+}
+
+.room-setup label,
 .home-location label {
   display: grid;
   gap: 0.35rem;
