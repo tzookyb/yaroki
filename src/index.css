@@ -673,9 +673,40 @@ form.room-profile {
   background: var(--field);
 }
 
+.climate-chart {
+  touch-action: pan-y;
+  user-select: none;
+  cursor: crosshair;
+}
+
 .climate-chart .axis {
   font-size: 9px;
   fill: var(--muted);
+}
+
+.climate-chart .grid {
+  stroke: var(--muted);
+  stroke-opacity: 0.25;
+  stroke-width: 0.5;
+}
+
+.climate-chart .guide {
+  stroke: var(--muted);
+  stroke-width: 0.75;
+  stroke-dasharray: 3 3;
+}
+
+.climate-chart .dot {
+  fill: var(--line-color);
+}
+
+.climate-chart .dot.picked {
+  stroke: var(--bg);
+  stroke-width: 2;
+}
+
+.climate-readout {
+  min-height: 1.4em;
 }
 
 .climate-chart .line {
@@ -686,11 +717,13 @@ form.room-profile {
 }
 
 .line-0,
+.dot-0,
 .key-0 {
   --line-color: var(--accent);
 }
 
 .line-1,
+.dot-1,
 .key-1 {
   --line-color: #9fb0e6;
 }
