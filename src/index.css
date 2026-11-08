@@ -217,6 +217,23 @@ label select {
   color: var(--muted);
 }
 
+.link-button {
+  width: auto;
+  min-height: 0;
+  margin: 0.5rem 0 0;
+  padding: 0.25rem 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 0.875rem;
+  text-decoration: underline;
+}
+
+.link-button:hover:not(:disabled) {
+  background: none;
+  text-decoration: none;
+}
+
 .back-link {
   display: inline-flex;
   align-items: center;

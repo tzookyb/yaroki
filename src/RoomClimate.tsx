@@ -86,58 +86,68 @@ export function SensorPicker({
 }) {
   const [devices, setDevices] = useState<SensiboDevice[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
 
-  function load() {
-    setError(null)
+  useEffect(() => {
     getSensors()
       .then(setDevices)
       .catch(() => setError('לא הצלחנו לטעון את מכשירי ה-Sensibo.'))
-  }
+  }, [])
 
-  if (!devices && !error) {
-    return (
-      <button type="button" className="secondary" onClick={load}>
-        חיבור חיישן Sensibo
-      </button>
-    )
-  }
-
-  async function toggle(device: SensiboDevice) {
-    const next = device.room_id === roomId ? null : roomId
+  async function choose(id: string) {
+    const previous = devices?.find((d) => d.room_id === roomId)
+    setSaving(true)
     setError(null)
     try {
-      await setSensorRoom(device.id, next)
+      if (id === '') {
+        if (previous) {
+          await setSensorRoom(previous.id, null)
+        }
+      } else {
+        await setSensorRoom(id, roomId)
+      }
       setDevices(
         (current) =>
           current &&
-          current.map((d) =>
-            d.id === device.id ? { ...d, room_id: next } : d,
-          ),
+          current.map((d) => ({
+            ...d,
+            room_id:
+              d.id === id ? roomId : d.room_id === roomId ? null : d.room_id,
+          })),
       )
       onChanged()
     } catch {
       setError('לא הצלחנו לשמור.')
+    } finally {
+      setSaving(false)
     }
   }
 
   return (
     <div className="sensor-picker">
-      <strong>חיישן Sensibo</strong>
       {error && <p role="alert">{error}</p>}
+      {!devices && !error && <p className="muted">טוען חיישנים…</p>}
       {devices?.length === 0 && <p className="muted">לא נמצאו מכשירים.</p>}
-      {devices?.map((device) => (
-        <label key={device.id} className="checkbox">
-          <input
-            type="checkbox"
-            checked={device.room_id === roomId}
-            onChange={() => toggle(device)}
-          />
-          {device.name}
-          {device.room_id !== null && device.room_id !== roomId && (
-            <span className="muted"> (מחובר לחדר אחר)</span>
-          )}
+      {devices && devices.length > 0 && (
+        <label>
+          חיישן Sensibo
+          <select
+            value={devices.find((d) => d.room_id === roomId)?.id ?? ''}
+            disabled={saving}
+            onChange={(event) => choose(event.target.value)}
+          >
+            <option value="">ללא חיישן</option>
+            {devices.map((device) => (
+              <option key={device.id} value={device.id}>
+                {device.name}
+                {device.room_id !== null && device.room_id !== roomId
+                  ? ' (מחובר לחדר אחר)'
+                  : ''}
+              </option>
+            ))}
+          </select>
         </label>
-      ))}
+      )}
     </div>
   )
 }

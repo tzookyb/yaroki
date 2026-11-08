@@ -127,12 +127,15 @@ export const climateRoutes = createApp()
       if (!room) {
         return c.json({ error: 'Room not found' }, 404)
       }
-      await c.env.DB.prepare(
-        `INSERT INTO room_sensors (sensibo_id, room_id) VALUES (?, ?)
-         ON CONFLICT (sensibo_id) DO UPDATE SET room_id = excluded.room_id`,
-      )
-        .bind(sensiboId, room_id)
-        .run()
+      await c.env.DB.batch([
+        c.env.DB.prepare(
+          'DELETE FROM room_sensors WHERE room_id = ? AND sensibo_id != ?',
+        ).bind(room_id, sensiboId),
+        c.env.DB.prepare(
+          `INSERT INTO room_sensors (sensibo_id, room_id) VALUES (?, ?)
+           ON CONFLICT (sensibo_id) DO UPDATE SET room_id = excluded.room_id`,
+        ).bind(sensiboId, room_id),
+      ])
       return c.body(null, 204)
     },
   )
