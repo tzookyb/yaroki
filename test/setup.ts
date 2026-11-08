@@ -7,8 +7,13 @@ await applyD1Migrations(env.DB, env.TEST_MIGRATIONS)
 // Storage is shared by the tests in a file, so each test starts from empty tables.
 beforeEach(async () => {
   await env.DB.batch(
-    ['events', 'plants', 'rooms', 'sessions'].map((table) =>
-      env.DB.prepare(`DELETE FROM ${table}`),
-    ),
+    [
+      'events',
+      'plants',
+      'room_readings',
+      'room_sensors',
+      'rooms',
+      'sessions',
+    ].map((table) => env.DB.prepare(`DELETE FROM ${table}`)),
   )
 })

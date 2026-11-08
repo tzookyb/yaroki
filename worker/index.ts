@@ -1,15 +1,18 @@
 import * as Sentry from '@sentry/cloudflare'
 import { secureHeaders } from 'hono/secure-headers'
 import { createApp } from './app'
+import { climateRoutes } from './routes/climate'
 import { photoRoutes } from './routes/photos'
 import { plantRoutes } from './routes/plants'
 import { roomRoutes } from './routes/rooms'
 import { publicRoutes, requireSession, sessionRoutes } from './routes/session'
 import { taskRoutes } from './routes/tasks'
-import { SENTRY_DATA_COLLECTION } from '../shared/sentry'
+import { collectReadings } from './readings'
+import { SENTRY_DATA_COLLECTION, scrubBreadcrumb } from '../shared/sentry'
 
 const DAILY_WATERING_CHECK = '0 6 * * *'
 const WEEKLY_AI_CARE_CHECK = '0 7 * * SUN'
+const CLIMATE_READINGS = '0 */3 * * *'
 
 // Order matters: routes mounted after requireSession need a signed-in device.
 const api = createApp()
@@ -17,6 +20,7 @@ const api = createApp()
   .route('/', requireSession)
   .route('/', sessionRoutes)
   .route('/rooms', roomRoutes)
+  .route('/climate', climateRoutes)
   .route('/plants', plantRoutes)
   .route('/tasks', taskRoutes)
   .route('/photos', photoRoutes)
@@ -42,7 +46,7 @@ const app = createApp()
 const handler = {
   fetch: app.fetch,
 
-  async scheduled(controller) {
+  async scheduled(controller, env) {
     switch (controller.cron) {
       case DAILY_WATERING_CHECK:
         // TODO: push watering reminders for plants that are due.
@@ -51,6 +55,9 @@ const handler = {
       case WEEKLY_AI_CARE_CHECK:
         // TODO: run the AI care check, push only if action is needed.
         console.log('weekly AI care check')
+        break
+      case CLIMATE_READINGS:
+        await collectReadings(env)
         break
     }
   },
@@ -61,6 +68,7 @@ export default Sentry.withSentry(
     dsn: env.SENTRY_DSN || undefined,
     enabled: Boolean(env.SENTRY_DSN),
     dataCollection: SENTRY_DATA_COLLECTION,
+    beforeBreadcrumb: scrubBreadcrumb,
   }),
   handler,
 )

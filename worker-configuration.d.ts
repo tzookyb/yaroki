@@ -9,6 +9,9 @@ interface __BaseEnv_Env {
 	GEMINI_API_KEY: string;
 	VAPID_PRIVATE_KEY: string;
 	SENTRY_DSN: string;
+	SENSIBO_API_KEY: string;
+	WEATHER_LATITUDE: string;
+	WEATHER_LONGITUDE: string;
 }
 declare namespace Cloudflare {
 	interface GlobalProps {
@@ -21,7 +24,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "APP_PASSWORD" | "GEMINI_API_KEY" | "VAPID_PRIVATE_KEY" | "SENTRY_DSN">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "APP_PASSWORD" | "GEMINI_API_KEY" | "VAPID_PRIVATE_KEY" | "SENTRY_DSN" | "SENSIBO_API_KEY" | "WEATHER_LATITUDE" | "WEATHER_LONGITUDE">> {}
 }
 declare module "*.txt" {
 	const value: string;

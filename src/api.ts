@@ -1,9 +1,12 @@
 import type {
+  LocationType,
   Plant,
   PlantDetails,
   Room,
+  RoomClimate,
   RoomDetails,
   RoomProfile,
+  SensiboDevice,
   Task,
   TaskList,
 } from '../shared/api'
@@ -11,9 +14,12 @@ import type {
 export type {
   Plant,
   PlantDetails,
+  LocationType,
   Room,
+  RoomClimate,
   RoomDetails,
   RoomProfile,
+  SensiboDevice,
   Task,
   TaskList,
 } from '../shared/api'
@@ -137,4 +143,28 @@ export function setTaskDone(task: Task, done: boolean) {
 
 export function photoUrl(photoKey: string) {
   return `/api/photos/${photoKey}`
+}
+
+export function getRoomClimate(roomId: number) {
+  return request<RoomClimate>(`/api/climate/rooms/${roomId}`)
+}
+
+export function setLocationType(roomId: number, locationType: LocationType) {
+  return send(`/api/climate/rooms/${roomId}/location`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ location_type: locationType }),
+  })
+}
+
+export function getSensors() {
+  return request<SensiboDevice[]>('/api/climate/sensors')
+}
+
+export function setSensorRoom(sensiboId: string, roomId: number | null) {
+  return send(`/api/climate/sensors/${sensiboId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ room_id: roomId }),
+  })
 }
