@@ -9,11 +9,18 @@ import { pushRoutes } from './routes/push'
 import { roomRoutes } from './routes/rooms'
 import { publicRoutes, requireSession, sessionRoutes } from './routes/session'
 import { taskRoutes } from './routes/tasks'
-import { sendDueReminders } from './push'
+import {
+  learnHourFromHistory,
+  learnHourWithAi,
+  sendReminderIfTime,
+} from './reminderTime'
 import { collectReadings } from './readings'
 import { SENTRY_DATA_COLLECTION, scrubBreadcrumb } from '../shared/sentry'
 
-const DAILY_WATERING_CHECK = '0 6 * * *'
+// Runs every hour so the reminder can go out in the hour the owner usually waters.
+const HOURLY_CHECK = '0 * * * *'
+// 06:00 UTC is the daily slot for the jobs that need only one run a day.
+const DAILY_UTC_HOUR = 6
 const WEEKLY_AI_CARE_CHECK = '0 7 * * SUN'
 const CLIMATE_READINGS = '0 */3 * * *'
 
@@ -52,19 +59,24 @@ const handler = {
 
   async scheduled(controller, env) {
     switch (controller.cron) {
-      case DAILY_WATERING_CHECK:
-        // Independent jobs: a failure in one must not skip the other.
-        await Promise.allSettled([
-          sendDueReminders(env).catch((error) => {
-            console.error('Watering reminders failed', error)
-            Sentry.captureException(error)
-          }),
-          enrichPendingPlants(env),
-        ])
+      case HOURLY_CHECK: {
+        // Independent jobs: a failure in one must not skip the others.
+        const jobs = [sendReminderIfTime(env)]
+        if (
+          new Date(controller.scheduledTime).getUTCHours() === DAILY_UTC_HOUR
+        ) {
+          jobs.push(learnHourFromHistory(env.DB), enrichPendingPlants(env))
+        }
+        await Promise.allSettled(jobs)
         break
+      }
       case WEEKLY_AI_CARE_CHECK:
         // TODO: run the AI care check, push only if action is needed.
         console.log('weekly AI care check')
+        await learnHourWithAi(env).catch((error) => {
+          console.error('Learning the reminder hour failed', error)
+          Sentry.captureException(error)
+        })
         break
       case CLIMATE_READINGS:
         await collectReadings(env)
