@@ -227,10 +227,16 @@ label select {
 }
 
 .app-title {
-  font-size: 1.15rem;
-  font-weight: 650;
-  color: var(--accent);
+  --logo-accent: var(--accent);
+
+  color: var(--text);
   text-decoration: none;
+}
+
+.logo {
+  display: block;
+  height: 2rem;
+  width: auto;
 }
 
 .icon-button {
