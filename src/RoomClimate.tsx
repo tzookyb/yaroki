@@ -226,7 +226,7 @@ function RoomClimate({
         {error && <p role="alert">{error}</p>}
         {climate?.latest && (
           <p>
-            עכשיו: {climate.latest.temperature}°
+            עכשיו: <bdi dir="ltr">{climate.latest.temperature}°</bdi>
             {climate.latest.humidity !== null &&
               `, לחות ${Math.round(climate.latest.humidity)}%`}
           </p>

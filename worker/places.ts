@@ -24,7 +24,8 @@ const photon = z.object({
 export async function searchPlaces(query: string): Promise<HomeLocation[]> {
   const url = new URL(PHOTON_URL)
   url.searchParams.set('q', query)
-  url.searchParams.set('limit', String(MAX_RESULTS))
+  // Extra results, because Photon returns one per street segment and those share a label.
+  url.searchParams.set('limit', String(MAX_RESULTS * 2))
   url.searchParams.set('lang', 'en')
   const response = await fetch(url, {
     headers: { 'User-Agent': 'yaroki-plant-tracker' },
@@ -33,14 +34,20 @@ export async function searchPlaces(query: string): Promise<HomeLocation[]> {
   if (!response.ok) {
     throw new Error(`Photon returned ${response.status}`)
   }
-  return photon.parse(await response.json()).features.map((feature) => {
+  const places = new Map<string, HomeLocation>()
+  for (const feature of photon.parse(await response.json()).features) {
     const { name, street, housenumber, city, country } = feature.properties
     const road = street ? [street, housenumber].filter(Boolean).join(' ') : null
-    const label = [...new Set([name, road, city, country].filter(Boolean))]
-    return {
-      label: label.join(', '),
-      longitude: feature.geometry.coordinates[0],
-      latitude: feature.geometry.coordinates[1],
+    const label = [
+      ...new Set([name, road, city, country].filter(Boolean)),
+    ].join(', ')
+    if (!places.has(label)) {
+      places.set(label, {
+        label,
+        longitude: feature.geometry.coordinates[0],
+        latitude: feature.geometry.coordinates[1],
+      })
     }
-  })
+  }
+  return [...places.values()].slice(0, MAX_RESULTS)
 }
