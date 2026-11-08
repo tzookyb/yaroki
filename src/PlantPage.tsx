@@ -83,7 +83,12 @@ function PlantPage({ id }: { id: string }) {
 
   return (
     <>
-      <a href={plant?.room_id ? `#/rooms/${plant.room_id}` : '#/'}>→ חזרה</a>
+      <a
+        href={plant?.room_id ? `#/rooms/${plant.room_id}` : '#/'}
+        className="back-link"
+      >
+        → חזרה
+      </a>
       {error && <p role="alert">{error}</p>}
       {plant && (
         <>

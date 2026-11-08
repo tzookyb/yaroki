@@ -32,7 +32,7 @@ function LoginPage({ onSignIn }: { onSignIn: () => void }) {
   }
 
   return (
-    <>
+    <div className="login">
       <h1>Yaroki</h1>
       {error && <p role="alert">{error}</p>}
       <form className="inline-form" onSubmit={handleSubmit}>
@@ -48,7 +48,7 @@ function LoginPage({ onSignIn }: { onSignIn: () => void }) {
           כניסה
         </button>
       </form>
-    </>
+    </div>
   )
 }
 

@@ -41,8 +41,8 @@ export default defineConfig({
         description: 'מעקב אחר הצמחים בבית',
         lang: 'he',
         dir: 'rtl',
-        theme_color: '#2f6b3f',
-        background_color: '#f6f7f2',
+        theme_color: '#0a1710',
+        background_color: '#0a1710',
         display: 'standalone',
         start_url: '/',
         icons: [
