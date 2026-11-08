@@ -76,15 +76,30 @@ function Chart({ weeks }: { weeks: Climate['weeks'] }) {
   )
 }
 
-function SensorPicker({ roomId }: { roomId: number }) {
+function SensorPicker({
+  roomId,
+  onChanged,
+}: {
+  roomId: number
+  onChanged: () => void
+}) {
   const [devices, setDevices] = useState<SensiboDevice[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  function load() {
+    setError(null)
     getSensors()
       .then(setDevices)
       .catch(() => setError('לא הצלחנו לטעון את מכשירי ה-Sensibo.'))
-  }, [])
+  }
+
+  if (!devices && !error) {
+    return (
+      <button type="button" className="secondary" onClick={load}>
+        חיבור חיישן Sensibo
+      </button>
+    )
+  }
 
   async function toggle(device: SensiboDevice) {
     const next = device.room_id === roomId ? null : roomId
@@ -98,6 +113,7 @@ function SensorPicker({ roomId }: { roomId: number }) {
             d.id === device.id ? { ...d, room_id: next } : d,
           ),
       )
+      onChanged()
     } catch {
       setError('לא הצלחנו לשמור.')
     }
@@ -191,14 +207,15 @@ function RoomClimate({
         {climate && climate.weeks.length > 0 ? (
           <Chart weeks={climate.weeks} />
         ) : (
-          climate && (
+          climate &&
+          (locationType !== 'indoor' || climate.sensor_count > 0) && (
             <p className="muted">
               עוד אין מדידות. הן נאספות אוטומטית כל כמה שעות.
             </p>
           )
         )}
         {locationType === 'indoor' ? (
-          <SensorPicker roomId={roomId} />
+          <SensorPicker roomId={roomId} onChanged={load} />
         ) : (
           <p className="muted">מזג האוויר נלקח משירות חיצוני לפי מיקום הבית.</p>
         )}

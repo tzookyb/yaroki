@@ -13,7 +13,7 @@ function round(value: number | null) {
 export const climateRoutes = createApp()
   .get('/rooms/:id', validate('param', idParam), async (c) => {
     const { id } = c.req.valid('param')
-    const [weeks, latest] = await Promise.all([
+    const [weeks, latest, sensors] = await Promise.all([
       c.env.DB.prepare(
         `SELECT CAST(strftime('%Y', measured_at) AS INTEGER) AS year,
                 CAST(strftime('%W', measured_at) AS INTEGER) AS week,
@@ -32,8 +32,14 @@ export const climateRoutes = createApp()
       )
         .bind(id)
         .first<NonNullable<RoomClimate['latest']>>(),
+      c.env.DB.prepare(
+        'SELECT COUNT(*) AS count FROM room_sensors WHERE room_id = ?',
+      )
+        .bind(id)
+        .first<number>('count'),
     ])
     const body: RoomClimate = {
+      sensor_count: sensors ?? 0,
       weeks: weeks.results.map((w) => ({
         ...w,
         temperature: round(w.temperature) ?? 0,

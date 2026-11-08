@@ -281,6 +281,7 @@ describe('room location and climate', () => {
 
     const response = await api(`/climate/rooms/${roomId}`, {}, session)
     expect(await response.json()).toEqual({
+      sensor_count: 0,
       weeks: [
         { year: 2025, week: 1, temperature: 11, humidity: 50 },
         { year: 2026, week: 1, temperature: 20, humidity: 40 },
@@ -296,7 +297,11 @@ describe('room location and climate', () => {
   it('returns no weeks and no latest for a room without readings', async () => {
     const roomId = await addRoom()
     const response = await api(`/climate/rooms/${roomId}`, {}, session)
-    expect(await response.json()).toEqual({ weeks: [], latest: null })
+    expect(await response.json()).toEqual({
+      sensor_count: 0,
+      weeks: [],
+      latest: null,
+    })
   })
 
   it('deletes readings with their room', async () => {

@@ -85,6 +85,8 @@ export type ClimateWeek = {
 }
 
 export type RoomClimate = {
+  // Sensibo devices linked to the room. Most rooms have none, and then show no readings.
+  sensor_count: number
   weeks: ClimateWeek[]
   latest: {
     temperature: number
