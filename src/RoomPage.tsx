@@ -102,7 +102,9 @@ function RoomPage({ id }: { id: string }) {
 
   return (
     <>
-      <a href="#/">→ חדרים</a>
+      <a href="#/" className="back-link">
+        → חדרים
+      </a>
       <h1>{room?.name}</h1>
       {error && <p role="alert">{error}</p>}
       {room?.plants.length === 0 && <p>אין עדיין צמחים בחדר הזה.</p>}
