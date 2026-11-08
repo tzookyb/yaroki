@@ -9,6 +9,7 @@ import {
   type RoomClimate as Climate,
   type SensiboDevice,
 } from './api'
+import { ROOMS_CHANGED } from './ManageRooms'
 
 const LOCATION_LABELS: Record<LocationType, string> = {
   indoor: 'בתוך הבית',
@@ -76,7 +77,7 @@ function Chart({ weeks }: { weeks: Climate['weeks'] }) {
   )
 }
 
-function SensorPicker({
+export function SensorPicker({
   roomId,
   onChanged,
 }: {
@@ -141,7 +142,7 @@ function SensorPicker({
   )
 }
 
-function RoomClimate({
+export function RoomLocationSetup({
   roomId,
   locationType,
   onLocationChange,
@@ -150,17 +151,8 @@ function RoomClimate({
   locationType: LocationType
   onLocationChange: (locationType: LocationType) => void
 }) {
-  const [climate, setClimate] = useState<Climate | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-
-  function load() {
-    getRoomClimate(roomId)
-      .then(setClimate)
-      .catch(() => setError('לא הצלחנו לטעון את נתוני האקלים.'))
-  }
-
-  useEffect(load, [roomId])
 
   async function changeLocation(next: LocationType) {
     setSaving(true)
@@ -168,7 +160,6 @@ function RoomClimate({
     try {
       await setLocationType(roomId, next)
       onLocationChange(next)
-      load()
     } catch {
       setError('לא הצלחנו לשמור.')
     } finally {
@@ -177,25 +168,61 @@ function RoomClimate({
   }
 
   return (
+    <div className="room-climate room-setup">
+      <label>
+        מיקום החדר
+        <select
+          value={locationType}
+          disabled={saving}
+          onChange={(event) =>
+            changeLocation(event.target.value as LocationType)
+          }
+        >
+          {LOCATION_TYPES.map((type) => (
+            <option key={type} value={type}>
+              {LOCATION_LABELS[type]}
+            </option>
+          ))}
+        </select>
+      </label>
+      {error && <p role="alert">{error}</p>}
+      {locationType === 'indoor' ? (
+        <SensorPicker
+          roomId={roomId}
+          onChanged={() => window.dispatchEvent(new Event(ROOMS_CHANGED))}
+        />
+      ) : (
+        <p className="muted">מזג האוויר נלקח משירות חיצוני לפי מיקום הבית.</p>
+      )}
+    </div>
+  )
+}
+
+function RoomClimate({
+  roomId,
+  locationType,
+}: {
+  roomId: number
+  locationType: LocationType
+}) {
+  const [climate, setClimate] = useState<Climate | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    function load() {
+      getRoomClimate(roomId)
+        .then(setClimate)
+        .catch(() => setError('לא הצלחנו לטעון את נתוני האקלים.'))
+    }
+    load()
+    window.addEventListener(ROOMS_CHANGED, load)
+    return () => window.removeEventListener(ROOMS_CHANGED, load)
+  }, [roomId, locationType])
+
+  return (
     <details className="room-profile room-climate">
       <summary>אקלים בחדר</summary>
       <div className="climate-body">
-        <label>
-          מיקום החדר
-          <select
-            value={locationType}
-            disabled={saving}
-            onChange={(event) =>
-              changeLocation(event.target.value as LocationType)
-            }
-          >
-            {LOCATION_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {LOCATION_LABELS[type]}
-              </option>
-            ))}
-          </select>
-        </label>
         {error && <p role="alert">{error}</p>}
         {climate?.latest && (
           <p>
@@ -214,11 +241,7 @@ function RoomClimate({
             </p>
           )
         )}
-        {locationType === 'indoor' ? (
-          <SensorPicker roomId={roomId} onChanged={load} />
-        ) : (
-          <p className="muted">מזג האוויר נלקח משירות חיצוני לפי מיקום הבית.</p>
-        )}
+        <p className="muted">את מיקום החדר וחיישן ה-Sensibo מגדירים בהגדרות.</p>
       </div>
     </details>
   )

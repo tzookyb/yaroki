@@ -3,12 +3,15 @@ import { useRef, useState } from 'react'
 import { pullProd, signOut, signOutEverywhere } from './api'
 import HomeLocationForm from './HomeLocationForm'
 import ManageRooms from './ManageRooms'
+import RoomSettings from './RoomSettings'
 
 const DRAWER_MS = 200
 
 function AppHeader({ onSignOut }: { onSignOut: () => void }) {
   const menu = useRef<HTMLDivElement>(null)
-  const [view, setView] = useState<'menu' | 'rooms' | 'home'>('menu')
+  const [view, setView] = useState<'menu' | 'rooms' | 'room-setup' | 'home'>(
+    'menu',
+  )
   const [closing, setClosing] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -97,7 +100,12 @@ function AppHeader({ onSignOut }: { onSignOut: () => void }) {
                 className="icon-button back-button"
                 onClick={() => setView('menu')}
               >
-                → {view === 'rooms' ? 'ניהול חדרים' : 'כתובת הבית'}
+                →{' '}
+                {view === 'rooms'
+                  ? 'ניהול חדרים'
+                  : view === 'room-setup'
+                    ? 'תנאי חדרים וחיישנים'
+                    : 'כתובת הבית'}
               </button>
             )}
             <button
@@ -111,6 +119,8 @@ function AppHeader({ onSignOut }: { onSignOut: () => void }) {
           </div>
           {view === 'rooms' ? (
             <ManageRooms />
+          ) : view === 'room-setup' ? (
+            <RoomSettings />
           ) : view === 'home' ? (
             <HomeLocationForm />
           ) : (
@@ -121,6 +131,13 @@ function AppHeader({ onSignOut }: { onSignOut: () => void }) {
                 onClick={() => setView('rooms')}
               >
                 ניהול חדרים
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setView('room-setup')}
+              >
+                תנאי חדרים וחיישנים
               </button>
               <button
                 type="button"
