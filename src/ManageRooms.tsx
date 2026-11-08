@@ -71,7 +71,7 @@ function ManageRooms() {
       <>
         <button
           type="button"
-          className="secondary"
+          className="link-button"
           onClick={() => setSetup(null)}
         >
           → חזרה לחדרים
