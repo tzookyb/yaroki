@@ -217,6 +217,23 @@ label select {
   color: var(--muted);
 }
 
+.link-button {
+  width: auto;
+  min-height: 0;
+  margin: 0.5rem 0 0;
+  padding: 0.25rem 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 0.875rem;
+  text-decoration: underline;
+}
+
+.link-button:hover:not(:disabled) {
+  background: none;
+  text-decoration: none;
+}
+
 .back-link {
   display: inline-flex;
   align-items: center;
@@ -762,15 +779,45 @@ form.room-profile {
 
 .fit {
   font-size: 0.8125rem;
+  font-weight: 600;
 }
 
-.fit-ok {
+.fit-source {
+  margin-inline-start: 0.5rem;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.need-good {
+  border-inline-start: 3px solid var(--accent);
+}
+
+.need-good .fit {
   color: var(--accent);
 }
 
-.fit-low,
-.fit-high {
+.need-warn {
+  border-inline-start: 3px solid var(--warn);
+}
+
+.need-warn .fit {
   color: var(--warn);
+}
+
+.need-bad {
+  border-inline-start: 3px solid var(--danger);
+}
+
+.need-bad .fit {
+  color: var(--danger);
+}
+
+.need-unknown {
+  border-inline-start: 3px solid var(--muted);
+}
+
+.need-unknown .fit {
+  color: var(--muted);
 }
 
 /* Next tasks */
@@ -900,10 +947,6 @@ form.room-profile {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
-}
-
-.home-location h2 {
-  margin: 0;
 }
 
 .home-location > p:not(.muted, [role='alert']) {

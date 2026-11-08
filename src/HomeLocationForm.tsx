@@ -67,7 +67,6 @@ function HomeLocationForm() {
 
   return (
     <div className="home-location">
-      <h2>כתובת הבית</h2>
       <p className="muted">
         משמשת למזג האוויר של חדרים בחוץ ושל הגינה. מספיק מיקום בערך.
       </p>

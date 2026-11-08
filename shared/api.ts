@@ -57,7 +57,11 @@ export type Plant = {
   care_notes: string | null
 }
 
-export type PlantDetails = Plant & { room: RoomProfile | null }
+export type PlantDetails = Plant & {
+  room: RoomProfile | null
+  // Newest measurement from the last 3 days, from a sensor or the outdoor weather.
+  latest_reading: { temperature: number; humidity: number | null } | null
+}
 
 export type RoomDetails = Omit<Room, 'plant_count'> & {
   plants: Plant[]

@@ -1,43 +1,32 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import RoomSettings from './RoomSettings'
 import { ROOM_NAME_MAX_LENGTH } from '../shared/api'
-import { createRoom, deleteRoom, getRooms, renameRoom, type Room } from './api'
+import { deleteRoom, getRooms, renameRoom, type Room } from './api'
 
 // Lets the room list and room page refresh after a change made here.
 export const ROOMS_CHANGED = 'rooms-changed'
 
 function ManageRooms() {
   const [rooms, setRooms] = useState<Room[] | null>(null)
-  const [name, setName] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [setup, setSetup] = useState<number | 'new' | null>(null)
   const [renaming, setRenaming] = useState<{ id: number; name: string } | null>(
     null,
   )
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    getRooms()
-      .then(setRooms)
-      .catch(() => setError('לא הצלחנו לטעון את החדרים.'))
+    function load() {
+      getRooms()
+        .then(setRooms)
+        .catch(() => setError('לא הצלחנו לטעון את החדרים.'))
+    }
+    load()
+    window.addEventListener(ROOMS_CHANGED, load)
+    return () => window.removeEventListener(ROOMS_CHANGED, load)
   }, [])
 
-  async function refresh() {
-    setRooms(await getRooms())
+  function refresh() {
     window.dispatchEvent(new Event(ROOMS_CHANGED))
-  }
-
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    setSaving(true)
-    setError(null)
-    try {
-      await createRoom(name)
-      await refresh()
-      setName('')
-    } catch {
-      setError('לא הצלחנו להוסיף את החדר.')
-    } finally {
-      setSaving(false)
-    }
   }
 
   async function handleRename(event: FormEvent) {
@@ -49,7 +38,7 @@ function ManageRooms() {
     setError(null)
     try {
       await renameRoom(String(renaming.id), renaming.name)
-      await refresh()
+      refresh()
       setRenaming(null)
     } catch {
       setError('לא הצלחנו לשנות את השם.')
@@ -71,10 +60,25 @@ function ManageRooms() {
       if (window.location.hash === `#/rooms/${room.id}`) {
         window.location.assign('#/')
       }
-      await refresh()
+      refresh()
     } catch {
       setError('לא הצלחנו למחוק את החדר.')
     }
+  }
+
+  if (setup !== null) {
+    return (
+      <>
+        <button
+          type="button"
+          className="link-button"
+          onClick={() => setSetup(null)}
+        >
+          → חזרה לחדרים
+        </button>
+        <RoomSettings target={setup} onCreated={setSetup} />
+      </>
+    )
   }
 
   return (
@@ -111,6 +115,14 @@ function ManageRooms() {
                 <button
                   type="button"
                   className="secondary"
+                  aria-label={`תנאי החדר ${room.name}`}
+                  onClick={() => setSetup(room.id)}
+                >
+                  ⚙&#xFE0E;
+                </button>
+                <button
+                  type="button"
+                  className="secondary"
                   onClick={() => setRenaming({ id: room.id, name: room.name })}
                 >
                   שינוי שם
@@ -127,18 +139,9 @@ function ManageRooms() {
           </li>
         ))}
       </ul>
-      <form className="inline-form" onSubmit={handleSubmit}>
-        <input
-          maxLength={ROOM_NAME_MAX_LENGTH}
-          aria-label="שם החדר"
-          placeholder="סלון"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-        />
-        <button type="submit" disabled={saving || !name.trim()}>
-          הוספת חדר
-        </button>
-      </form>
+      <button type="button" onClick={() => setSetup('new')}>
+        הוספת חדר
+      </button>
     </>
   )
 }

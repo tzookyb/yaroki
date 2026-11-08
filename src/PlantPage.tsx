@@ -14,29 +14,54 @@ import {
   wateringLabel,
 } from './labels'
 
-const FIT_TEXT: Record<Exclude<Fit, null>, string> = {
-  ok: '✓ מתאים',
-  low: '⚠ בחדר יש פחות מהנדרש',
-  high: '⚠ בחדר יש יותר מהנדרש',
+const VERDICT_TEXT = {
+  good: { icon: '✓', text: 'מתאים' },
+  warn: { icon: '▲', text: 'גבולי' },
+  bad: { icon: '✕', text: 'לא מתאים' },
+} as const
+
+function fitText(fit: Fit) {
+  const { icon, text } = VERDICT_TEXT[fit.verdict]
+  const direction =
+    fit.direction === 'low'
+      ? ': פחות מהנדרש'
+      : fit.direction === 'high'
+        ? ': יותר מהנדרש'
+        : ''
+  return `${icon} ${text}${direction}`
 }
 
+// Color is never the only signal: every state has its own icon and word.
 function Need({
   label,
   value,
   fit,
+  checked,
 }: {
   label: string
   value: string | null
-  fit: Fit
+  fit: Fit | null
+  checked: boolean
 }) {
   if (!value) {
     return null
   }
+  const verdict = checked ? (fit?.verdict ?? 'unknown') : 'none'
   return (
-    <li>
+    <li className={`need need-${verdict}`}>
       <span className="need-label">{label}</span>
       <strong>{value}</strong>
-      {fit && <span className={`fit fit-${fit}`}>{FIT_TEXT[fit]}</span>}
+      {checked &&
+        (fit ? (
+          <span className="fit">
+            {fitText(fit)}
+            <span className="fit-source">
+              {fit.source === 'reading' ? 'לפי מדידה' : 'לפי פרופיל החדר'}
+            </span>
+          </span>
+        ) : (
+          <span className="fit">? אין מספיק נתונים על החדר</span>
+        ))}
     </li>
   )
 }
@@ -79,6 +104,7 @@ function PlantPage({ id }: { id: string }) {
   }, [id])
 
   const room = plant?.room
+  const reading = plant?.latest_reading
   const hasTemperature = plant?.temp_min != null && plant.temp_max != null
 
   return (
@@ -124,20 +150,23 @@ function PlantPage({ id }: { id: string }) {
               label="אור"
               value={plant.light_needs && LIGHT_LABELS[plant.light_needs]}
               fit={room ? lightFit(plant, room) : null}
+              checked={!!room}
             />
             <Need
               label="לחות"
               value={
                 plant.humidity_needs && HUMIDITY_LABELS[plant.humidity_needs]
               }
-              fit={room ? humidityFit(plant, room) : null}
+              fit={room ? humidityFit(plant, room, reading) : null}
+              checked={!!room}
             />
             <Need
               label="טמפרטורה"
               value={
                 hasTemperature ? `${plant.temp_min}–${plant.temp_max}°C` : null
               }
-              fit={room ? temperatureFit(plant, room) : null}
+              fit={room ? temperatureFit(plant, room, reading) : null}
+              checked={!!room}
             />
             <Need
               label="השקיה"
@@ -147,11 +176,13 @@ function PlantPage({ id }: { id: string }) {
                   : null
               }
               fit={null}
+              checked={false}
             />
             <Need
               label="סוג"
               value={plant.category && CATEGORY_LABELS[plant.category]}
               fit={null}
+              checked={false}
             />
           </ul>
           {!room && plant.room_id === null && (

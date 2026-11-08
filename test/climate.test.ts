@@ -92,6 +92,16 @@ describe('sensors', () => {
     ).toHaveLength(0)
   })
 
+  it('keeps one sensor per room', async () => {
+    const roomId = await addRoom()
+    await put('/climate/sensors/abcd1234', { room_id: roomId })
+    await put('/climate/sensors/offline1', { room_id: roomId })
+    const mapped = await env.DB.prepare(
+      'SELECT sensibo_id FROM room_sensors',
+    ).all()
+    expect(mapped.results).toEqual([{ sensibo_id: 'offline1' }])
+  })
+
   it('rejects an unknown room and a bad device id', async () => {
     expect(
       (await put('/climate/sensors/abcd1234', { room_id: 999 })).status,
@@ -344,6 +354,10 @@ describe('home location', () => {
         geometry: { coordinates: [34.8, 32.1] },
         properties: { name: 'Tel Aviv', country: 'Israel' },
       },
+      {
+        geometry: { coordinates: [34.81, 32.11] },
+        properties: { name: 'Tel Aviv', country: 'Israel' },
+      },
     ],
   }
 
@@ -406,7 +420,7 @@ describe('home location', () => {
     ])
   })
 
-  it('searches addresses through Photon', async () => {
+  it('searches addresses through Photon, one result per label', async () => {
     mockFetch({ 'photon.komoot.io': PHOTON })
     const response = await api('/climate/places?q=dizengoff', {}, session)
     expect(await response.json()).toEqual([
