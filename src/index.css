@@ -409,6 +409,10 @@ label select {
   background: var(--surface-raised);
 }
 
+.rooms a > :first-child {
+  flex: 1;
+}
+
 .rooms a .muted {
   font-size: 0.875rem;
 }
