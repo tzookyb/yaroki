@@ -1,15 +1,13 @@
 import { z } from 'zod'
 import {
-  ENRICH_VERSION,
   type Plant,
   type PlantDetails,
   type RoomProfile,
 } from '../../shared/api'
 import { createApp, validate } from '../app'
 import { enrichPlant } from '../enrich'
-import { identifyPlant } from '../gemini'
+import { identifyAndSave } from '../identify'
 import { latestReading } from '../roomReading'
-import { findReferenceImage } from '../wikipedia'
 import { idParam, skipBody } from '../schemas'
 import { getTasks, setTaskDone, setTaskSkipped } from '../tasks'
 
@@ -68,69 +66,18 @@ export const plantRoutes = createApp()
 
   // Separate from adding a plant, so that a Gemini failure never loses the photo and can be retried.
   .post('/:id/identify', validate('param', idParam), async (c) => {
-    const { id } = c.req.valid('param')
-    if (!c.env.GEMINI_API_KEY) {
-      return c.json({ error: 'AI is not set up' }, 503)
-    }
-    const plant = await c.env.DB.prepare(
-      'SELECT photo_key, room_id FROM plants WHERE id = ?',
-    )
-      .bind(id)
-      .first<{ photo_key: string | null; room_id: number | null }>()
-    const photo = plant?.photo_key && (await c.env.PHOTOS.get(plant.photo_key))
-    if (!photo) {
-      return c.json({ error: 'Plant not found' }, 404)
-    }
-    const room = plant.room_id
-      ? await c.env.DB.prepare('SELECT * FROM rooms WHERE id = ?')
-          .bind(plant.room_id)
-          .first<RoomProfile>()
-      : null
-    let identification
-    try {
-      identification = await identifyPlant(
-        await photo.arrayBuffer(),
-        c.env.GEMINI_API_KEY,
-        room ?? undefined,
-        (plant.room_id && (await latestReading(c.env.DB, plant.room_id))) ||
-          undefined,
-      )
-    } catch (error) {
-      console.error('Could not identify plant', error)
-      return c.json({ error: 'AI request failed' }, 502)
-    }
-    if (!identification) {
-      return c.json({ error: 'No plant in photo' }, 422)
-    }
-    const referenceImage = await findReferenceImage(identification.species)
-    const updated = await c.env.DB.prepare(
-      `UPDATE plants
-       SET name = ?, species = ?, common_name = ?, english_name = ?, category = ?,
-           light_needs = ?, water_every_days = ?, humidity_needs = ?, temp_min = ?,
-           temp_max = ?, description = ?, reference_image_url = ?, care_notes = ?,
-           enriched_version = ?
-       WHERE id = ?
-       RETURNING *`,
-    )
-      .bind(
-        identification.common_name,
-        identification.species,
-        identification.common_name,
-        identification.english_name,
-        identification.category,
-        identification.light_needs,
-        identification.water_every_days,
-        identification.humidity_needs,
-        identification.temp_min,
-        identification.temp_max,
-        identification.description,
-        referenceImage,
-        identification.care_notes,
-        ENRICH_VERSION,
-        id,
-      )
-      .first()
-    return c.json(updated)
+    const result = await identifyAndSave(c.env, c.req.valid('param').id, false)
+    return 'plant' in result
+      ? c.json(result.plant)
+      : c.json({ error: result.error }, result.status)
+  })
+
+  // The owner says the identification is wrong: ask again, excluding the species already rejected.
+  .post('/:id/reidentify', validate('param', idParam), async (c) => {
+    const result = await identifyAndSave(c.env, c.req.valid('param').id, true)
+    return 'plant' in result
+      ? c.json(result.plant)
+      : c.json({ error: result.error }, result.status)
   })
 
   // Called by the plant page for plants that miss data added after they were identified.

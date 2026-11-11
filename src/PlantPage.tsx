@@ -6,7 +6,13 @@ import {
   temperatureFit,
   type Fit,
 } from '../shared/plantFit'
-import { getPlant, enrichPlant, type PlantDetails, type TaskList } from './api'
+import {
+  getPlant,
+  enrichPlant,
+  reidentifyPlant,
+  type PlantDetails,
+  type TaskList,
+} from './api'
 import {
   CATEGORY_LABELS,
   HUMIDITY_LABELS,
@@ -119,6 +125,21 @@ function PlantPage({ id, fromHome }: { id: string; fromHome: boolean }) {
   const [plant, setPlant] = useState<PlantDetails | null>(null)
   const [enriching, setEnriching] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [reidentifying, setReidentifying] = useState(false)
+  const [reidentifyError, setReidentifyError] = useState(false)
+
+  async function reidentify() {
+    setReidentifying(true)
+    setReidentifyError(false)
+    try {
+      const updated = await reidentifyPlant(Number(id))
+      setPlant((current) => current && { ...current, ...updated })
+    } catch {
+      setReidentifyError(true)
+    } finally {
+      setReidentifying(false)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -189,6 +210,21 @@ function PlantPage({ id, fromHome }: { id: string; fromHome: boolean }) {
             </figure>
           ) : (
             <p className="muted">לא מצאנו תמונה לדוגמה לצמח הזה.</p>
+          )}
+          {plant.photo_key && plant.species && (
+            <p>
+              <button
+                type="button"
+                className="secondary"
+                onClick={reidentify}
+                disabled={reidentifying}
+              >
+                {reidentifying ? 'מזהים מחדש…' : 'זה לא הצמח הזה? זהה מחדש'}
+              </button>
+            </p>
+          )}
+          {reidentifyError && (
+            <p role="alert">לא הצלחנו לזהות מחדש. נסו שוב עוד רגע.</p>
           )}
           {enriching && <p className="muted">מעדכנים פרטים על הצמח…</p>}
           {plant.description && <p>{plant.description}</p>}
