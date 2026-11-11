@@ -951,6 +951,7 @@ form.room-profile {
   font-size: 0.8125rem;
 }
 
+.overdue,
 .next-tasks .overdue {
   color: var(--danger);
 }

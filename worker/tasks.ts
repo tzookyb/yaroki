@@ -19,6 +19,8 @@ type TaskPlant = {
 type TaskType = {
   // The due date, or null when the plant has no such task.
   dueDate(plant: TaskPlant, today: string): string | null
+  // The due date of the occurrence after one done on `doneOn`.
+  nextDueDate(plant: TaskPlant, doneOn: string): string
   doneToday(plant: TaskPlant, today: string): boolean
   complete(db: D1Database, plantId: number, today: string): Promise<unknown>
   undo(db: D1Database, plantId: number, today: string): Promise<unknown>
@@ -35,6 +37,9 @@ const TASK_TYPES: Record<string, TaskType> = {
         return today
       }
       return addDays(plant.last_watered, plant.water_every_days)
+    },
+    nextDueDate(plant, doneOn) {
+      return addDays(doneOn, plant.water_every_days ?? 0)
     },
     doneToday(plant, today) {
       return plant.last_watered === today
@@ -112,9 +117,11 @@ function addDays(date: string, days: number) {
 }
 
 // Open tasks most urgent first, then tasks done today. Without `all`, only open tasks due by tomorrow.
+// `plantId` limits the list to one plant.
 export async function getTasks(
   db: D1Database,
   all: boolean,
+  plantId?: number,
 ): Promise<TaskList> {
   const today = todayInJerusalem()
   const tomorrow = addDays(today, 1)
@@ -123,8 +130,10 @@ export async function getTasks(
       `SELECT plants.id, plants.name, plants.photo_key, plants.room_id,
               rooms.name AS room_name, plants.water_every_days, plants.last_watered
        FROM plants
-       LEFT JOIN rooms ON rooms.id = plants.room_id`,
+       LEFT JOIN rooms ON rooms.id = plants.room_id
+       WHERE ?1 IS NULL OR plants.id = ?1`,
     )
+    .bind(plantId ?? null)
     .all<TaskPlant>()
 
   const { results: skipRows } = await db
@@ -164,6 +173,11 @@ export async function getTasks(
         due_date: dueDate,
         done_today: doneToday,
         skip_reason: skipped ? skip.reason : null,
+        next_due_date: taskType.nextDueDate(
+          plant,
+          // A late task done today moves the schedule from today, not from its old due date.
+          doneToday || dueDate > today ? dueDate : today,
+        ),
       })
     }
   }
