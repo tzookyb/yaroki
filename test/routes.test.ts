@@ -381,6 +381,59 @@ describe('identifying a plant', () => {
     expect(await response.json()).toMatchObject({ care_notes: 'הרחק מהמזגן' })
   })
 
+  it('re-identifies with the rejected species in the prompt and keeps a custom name', async () => {
+    await env.PHOTOS.put('plants/a.webp', new Uint8Array([1]))
+    const plant = await addPlant({ photo_key: 'plants/a.webp' })
+    const prompts: string[] = []
+    const species = ['Ficus lyrata', 'Ficus elastica', 'Ficus benghalensis']
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (String(input).includes('wikipedia.org')) {
+        return new Response('', { status: 404 })
+      }
+      prompts.push(JSON.parse(String(init?.body)).contents[0].parts[0].text)
+      return Response.json({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    is_plant: true,
+                    species: species[prompts.length - 1],
+                    common_name: `שם ${prompts.length}`,
+                    english_name: 'Fig',
+                    category: 'tree',
+                    light_needs: 'medium',
+                    water_every_days: 7,
+                    care_notes: '',
+                  }),
+                },
+              ],
+            },
+          },
+        ],
+      })
+    })
+    const post = (path: string) =>
+      api(`/plants/${plant}/${path}`, { method: 'POST' }, session)
+
+    await post('identify')
+    expect(prompts[0]).not.toContain('NOT any of')
+    const second = await (await post('reidentify')).json()
+    expect(prompts[1]).toContain('NOT any of these species: Ficus lyrata')
+    expect(second).toMatchObject({ species: 'Ficus elastica', name: 'שם 2' })
+
+    await env.DB.prepare('UPDATE plants SET name = ? WHERE id = ?')
+      .bind('הצמח של סבתא', plant)
+      .run()
+    const third = await (await post('reidentify')).json()
+    expect(prompts[2]).toContain('Ficus lyrata, Ficus elastica')
+    expect(third).toMatchObject({
+      species: 'Ficus benghalensis',
+      name: 'הצמח של סבתא',
+    })
+  })
+
   it('keeps the plant and answers 502 when Gemini fails', async () => {
     await env.PHOTOS.put('plants/a.webp', new Uint8Array([1]))
     const plant = await addPlant({ photo_key: 'plants/a.webp' })

@@ -135,6 +135,10 @@ export function identifyPlant(id: number) {
   return request<Plant>(`/api/plants/${id}/identify`, { method: 'POST' })
 }
 
+export function reidentifyPlant(id: number) {
+  return request<Plant>(`/api/plants/${id}/reidentify`, { method: 'POST' })
+}
+
 export function deletePlant(id: number) {
   return send(`/api/plants/${id}`, { method: 'DELETE' })
 }

@@ -47,6 +47,10 @@ water_every_days is how often to water it indoors, in days, for a typical home i
 If the photo does not show a plant, set is_plant to false.
 ${NEEDS_PROMPT}`
 
+function excludedText(species: string[]) {
+  return `\nThe owner checked and this is NOT any of these species: ${species.join(', ')}. Do not answer with any of them. Give the closest different match you can see in the photo.`
+}
+
 const MAX_CARE_NOTES_CHARS = 300
 const MAX_DESCRIPTION_CHARS = 600
 
@@ -204,10 +208,16 @@ export async function identifyPlant(
   apiKey: string,
   room?: RoomProfile,
   reading?: RoomReading,
+  excluded: string[] = [],
 ): Promise<Identification | null> {
   const answer = await askGemini(
     [
-      { text: PROMPT + (room ? describeRoom(room, reading) : '') },
+      {
+        text:
+          PROMPT +
+          (excluded.length > 0 ? excludedText(excluded) : '') +
+          (room ? describeRoom(room, reading) : ''),
+      },
       {
         inlineData: {
           mimeType: 'image/webp',
