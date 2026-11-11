@@ -11,7 +11,7 @@ import { identifyPlant } from '../gemini'
 import { latestReading } from '../roomReading'
 import { findReferenceImage } from '../wikipedia'
 import { idParam, skipBody } from '../schemas'
-import { setTaskDone, setTaskSkipped } from '../tasks'
+import { getTasks, setTaskDone, setTaskSkipped } from '../tasks'
 
 const taskParam = idParam.extend({ type: z.string().regex(/^\w+$/) })
 
@@ -43,6 +43,7 @@ export const plantRoutes = createApp()
       ...plant,
       room,
       latest_reading: reading,
+      tasks: await getTasks(c.env.DB, true, id),
     }
     return c.json(details)
   })

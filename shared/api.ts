@@ -64,6 +64,7 @@ export type Plant = {
 export type PlantDetails = Plant & {
   room: RoomProfile | null
   latest_reading: RoomReading | null
+  tasks: TaskList
 }
 
 export type RoomDetails = Omit<Room, 'plant_count'> & {
@@ -86,6 +87,8 @@ export type Task = {
   done_today: boolean
   // Set while the task is postponed by a skip. `due_date` is then the day it comes back.
   skip_reason: SkipReason | null
+  // The due date after this task is done (for one done today, after `due_date`'s).
+  next_due_date: string
 }
 
 export type TaskList = {

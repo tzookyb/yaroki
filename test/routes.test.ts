@@ -218,6 +218,25 @@ describe('plant details', () => {
     })
   })
 
+  it("returns the plant's current and following watering dates", async () => {
+    const plant = await addPlant({})
+    await env.DB.prepare(
+      'UPDATE plants SET water_every_days = 7, last_watered = ? WHERE id = ?',
+    )
+      .bind('2026-01-01', plant)
+      .run()
+    const { tasks } = (await (
+      await api(`/plants/${plant}`, {}, session)
+    ).json()) as { tasks: { tasks: Record<string, unknown>[] } }
+    expect(tasks.tasks).toHaveLength(1)
+    expect(tasks.tasks[0]).toMatchObject({
+      type: 'water',
+      plant_id: plant,
+      due_date: '2026-01-08',
+    })
+    expect(tasks.tasks[0].next_due_date).toBeTypeOf('string')
+  })
+
   it('returns the newest reading from the last 3 days, not older ones', async () => {
     const room = await addRoom()
     const plant = await addPlant({ room_id: room })

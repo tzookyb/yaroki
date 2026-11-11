@@ -6,7 +6,7 @@ import {
   temperatureFit,
   type Fit,
 } from '../shared/plantFit'
-import { getPlant, enrichPlant, type PlantDetails } from './api'
+import { getPlant, enrichPlant, type PlantDetails, type TaskList } from './api'
 import {
   CATEGORY_LABELS,
   HUMIDITY_LABELS,
@@ -63,6 +63,55 @@ function Need({
           <span className="fit">? אין מספיק נתונים על החדר</span>
         ))}
     </li>
+  )
+}
+
+const TASK_TITLES: Record<string, string> = { water: 'השקיה' }
+
+function formatDate(date: string) {
+  return new Date(`${date}T00:00:00Z`).toLocaleDateString('he-IL', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'UTC',
+  })
+}
+
+function UpcomingTasks({ list: { tasks, today } }: { list: TaskList }) {
+  if (tasks.length === 0) {
+    return null
+  }
+  return (
+    <>
+      <h2>משימות</h2>
+      <ul className="needs">
+        {tasks.map((task) => {
+          const title = TASK_TITLES[task.type] ?? task.type
+          const overdue = !task.done_today && task.due_date < today
+          return (
+            <li key={task.type} className="need need-none">
+              <span className="need-label">{title}</span>
+              {task.done_today ? (
+                <>
+                  <strong>✓ בוצע היום</strong>
+                  <span className="fit">הבא: {formatDate(task.due_date)}</span>
+                </>
+              ) : (
+                <>
+                  <strong className={overdue ? 'overdue' : undefined}>
+                    {overdue ? 'באיחור, היה אמור ב' : 'עכשיו: '}
+                    {formatDate(task.due_date)}
+                  </strong>
+                  <span className="fit">
+                    אחריו: {formatDate(task.next_due_date)}
+                  </span>
+                </>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </>
   )
 }
 
@@ -144,6 +193,7 @@ function PlantPage({ id }: { id: string }) {
           {enriching && <p className="muted">מעדכנים פרטים על הצמח…</p>}
           {plant.description && <p>{plant.description}</p>}
           {plant.care_notes && <p className="care-notes">{plant.care_notes}</p>}
+          <UpcomingTasks list={plant.tasks} />
           <h2>מה הצמח צריך</h2>
           <ul className="needs">
             <Need

@@ -112,10 +112,7 @@ function TaskGroups({ list, busy, onDone, onSkip }: TaskGroupsProps) {
                 {task.photo_key && (
                   <img src={photoUrl(task.photo_key)} alt="" loading="lazy" />
                 )}
-                <a
-                  className="task-info"
-                  href={task.room_id ? `#/rooms/${task.room_id}` : undefined}
-                >
+                <a className="task-info" href={`#/plants/${task.plant_id}`}>
                   <strong>
                     {labels?.action ?? task.type} את {task.plant_name ?? 'הצמח'}
                   </strong>
