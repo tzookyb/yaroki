@@ -115,7 +115,7 @@ function UpcomingTasks({ list: { tasks, today } }: { list: TaskList }) {
   )
 }
 
-function PlantPage({ id }: { id: string }) {
+function PlantPage({ id, fromHome }: { id: string; fromHome: boolean }) {
   const [plant, setPlant] = useState<PlantDetails | null>(null)
   const [enriching, setEnriching] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -159,7 +159,7 @@ function PlantPage({ id }: { id: string }) {
   return (
     <>
       <a
-        href={plant?.room_id ? `#/rooms/${plant.room_id}` : '#/'}
+        href={!fromHome && plant?.room_id ? `#/rooms/${plant.room_id}` : '#/'}
         className="back-link"
       >
         → חזרה

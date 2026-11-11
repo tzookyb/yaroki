@@ -922,6 +922,10 @@ form.room-profile {
   padding-inline-start: 1.1rem;
 }
 
+.next-tasks li {
+  cursor: pointer;
+}
+
 .next-tasks li.done {
   opacity: 0.55;
 }
