@@ -1,11 +1,7 @@
 import { env } from 'cloudflare:workers'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ENRICH_VERSION } from '../shared/api'
-import {
-  backfillReferenceImages,
-  enrichPendingPlants,
-  enrichPlant,
-} from '../worker/enrich'
+import { enrichPendingPlants, enrichPlant } from '../worker/enrich'
 import { api, signIn } from './helpers'
 
 const NEEDS = {
@@ -153,36 +149,5 @@ describe('POST /plants/:id/enrich', () => {
       session,
     )
     expect(response.status).toBe(404)
-  })
-})
-
-describe('backfillReferenceImages', () => {
-  it('fills missing photos without touching the AI data, and retries misses only after a week', async () => {
-    const withPhoto = await addOldPlant()
-    await env.DB.prepare(
-      `UPDATE plants SET reference_image_url = 'https://upload.wikimedia.org/keep.jpg' WHERE id = ?`,
-    )
-      .bind(withPhoto)
-      .run()
-    const missing = await addOldPlant()
-    const fetch = mockServices()
-
-    await backfillReferenceImages(env)
-    expect(await plantRow(missing)).toMatchObject({
-      reference_image_url: 'https://upload.wikimedia.org/a.jpg',
-      name: 'מונסטרה',
-      enriched_version: 0,
-    })
-    expect(await plantRow(withPhoto)).toMatchObject({
-      reference_image_url: 'https://upload.wikimedia.org/keep.jpg',
-    })
-    expect(fetch).toHaveBeenCalledTimes(1)
-
-    fetch.mockImplementation(async () => new Response('', { status: 404 }))
-    const noPage = await addOldPlant('Nothing here')
-    await backfillReferenceImages(env)
-    await backfillReferenceImages(env)
-    expect(fetch).toHaveBeenCalledTimes(2)
-    expect(await plantRow(noPage)).toMatchObject({ reference_image_url: null })
   })
 })

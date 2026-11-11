@@ -77,28 +77,3 @@ export async function enrichPendingPlants(env: Env) {
     }
   }
 }
-
-// Plants identified while the reference photo lookup was broken have none. Wikipedia only, no AI,
-// so a run can take many plants; a species with no page is asked again after a week.
-const REFERENCE_PLANTS_PER_RUN = 10
-
-export async function backfillReferenceImages(env: Env) {
-  const { results } = await env.DB.prepare(
-    `SELECT id, species FROM plants
-     WHERE species IS NOT NULL AND reference_image_url IS NULL
-       AND (reference_checked_at IS NULL
-            OR reference_checked_at < datetime('now', '-7 days'))
-     ORDER BY id LIMIT ?`,
-  )
-    .bind(REFERENCE_PLANTS_PER_RUN)
-    .all<{ id: number; species: string }>()
-  for (const { id, species } of results) {
-    const url = await findReferenceImage(species)
-    await env.DB.prepare(
-      `UPDATE plants SET reference_image_url = ?, reference_checked_at = datetime('now')
-       WHERE id = ?`,
-    )
-      .bind(url, id)
-      .run()
-  }
-}
