@@ -102,7 +102,22 @@ function RoomPage({ id }: { id: string }) {
       <a href="#/" className="back-link">
         → חדרים
       </a>
-      <h1>{room?.name}</h1>
+      <div className="room-title">
+        <h1>{room?.name}</h1>
+        {room && (
+          <label className="button" aria-disabled={adding}>
+            {adding ? 'מוסיפים…' : 'הוספת צמח בצילום'}
+            <input
+              className="visually-hidden"
+              type="file"
+              accept="image/*"
+              capture="environment"
+              disabled={adding}
+              onChange={handlePhoto}
+            />
+          </label>
+        )}
+      </div>
       {error && <p role="alert">{error}</p>}
       {room?.plants.length === 0 && <p>אין עדיין צמחים בחדר הזה.</p>}
       {room && (
@@ -181,17 +196,6 @@ function RoomPage({ id }: { id: string }) {
                 ),
             )}
           </ul>
-          <label className="button" aria-disabled={adding}>
-            {adding ? 'מוסיפים…' : 'הוספת צמח בצילום'}
-            <input
-              className="visually-hidden"
-              type="file"
-              accept="image/*"
-              capture="environment"
-              disabled={adding}
-              onChange={handlePhoto}
-            />
-          </label>
         </>
       )}
     </>

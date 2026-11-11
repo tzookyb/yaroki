@@ -299,14 +299,13 @@ describe('room location and climate', () => {
 
   const at = (iso: string) => Date.parse(`${iso}Z`) / 1000
 
-  it('returns single readings while this year has little data, with last year shifted onto this year', async () => {
+  it('returns single readings while this year has little data', async () => {
     vi.useFakeTimers({
       toFake: ['Date'],
       now: new Date('2026-11-08T12:00:00Z'),
     })
     const roomId = await addRoom()
     await insert(roomId, [
-      ['2025-11-08 08:00:00', 10, 50],
       ['2026-11-08 08:00:00', 20, 40],
       ['2026-11-08 09:00:00', 22, null],
     ])
@@ -314,16 +313,15 @@ describe('room location and climate', () => {
     const body = (await (
       await api(`/climate/rooms/${roomId}`, {}, session)
     ).json()) as RoomClimate
-    expect(body).toEqual({
+    expect({ ...body, averages: undefined }).toEqual({
       sensor_count: 0,
+      sensor_name: null,
+      averages: undefined,
       year: 2026,
       resolution: 'raw',
       current: [
         { t: at('2026-11-08T08:00:00'), temperature: 20, humidity: 40 },
         { t: at('2026-11-08T09:00:00'), temperature: 22, humidity: null },
-      ],
-      previous: [
-        { t: at('2026-11-08T08:00:00'), temperature: 10, humidity: 50 },
       ],
       latest: {
         temperature: 22,
@@ -362,13 +360,37 @@ describe('room location and climate', () => {
     vi.useRealTimers()
   })
 
+  it('averages the last 7, 30 and 90 days from what exists', async () => {
+    const roomId = await addRoom()
+    for (const [days, temperature, humidity] of [
+      [2, 20, 40],
+      [10, 30, null],
+      [60, 10, 70],
+      [200, 99, 99],
+    ] as const) {
+      await env.DB.prepare(
+        `INSERT INTO room_readings (room_id, source_id, measured_at, temperature, humidity)
+         VALUES (?, 'x', datetime('now', ?), ?, ?)`,
+      )
+        .bind(roomId, `-${days} days`, temperature, humidity)
+        .run()
+    }
+    const body = (await (
+      await api(`/climate/rooms/${roomId}`, {}, session)
+    ).json()) as RoomClimate
+    expect(body.averages).toEqual([
+      { days: 7, temperature: 20, humidity: 40 },
+      { days: 30, temperature: 25, humidity: 40 },
+      { days: 90, temperature: 20, humidity: 55 },
+    ])
+  })
+
   it('returns no points and no latest for a room without readings', async () => {
     const roomId = await addRoom()
     const response = await api(`/climate/rooms/${roomId}`, {}, session)
     expect(await response.json()).toMatchObject({
       sensor_count: 0,
       current: [],
-      previous: [],
       latest: null,
     })
   })

@@ -183,11 +183,15 @@ export function getSensors() {
   return request<SensiboDevice[]>('/api/climate/sensors')
 }
 
-export function setSensorRoom(sensiboId: string, roomId: number | null) {
+export function setSensorRoom(
+  sensiboId: string,
+  roomId: number | null,
+  name?: string,
+) {
   return send(`/api/climate/sensors/${sensiboId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ room_id: roomId }),
+    body: JSON.stringify({ room_id: roomId, name }),
   })
 }
 

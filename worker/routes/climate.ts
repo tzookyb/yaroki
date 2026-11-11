@@ -21,13 +21,10 @@ const DAY = 86400
 // Up to this long a span of this year's data is drawn reading by reading, then daily averages, then weekly.
 const RAW_MAX_DAYS = 3
 const DAILY_MAX_DAYS = 90
+const AVERAGE_DAYS = [7, 30, 90]
 
 function round(value: number | null) {
   return value === null ? null : Math.round(value * 10) / 10
-}
-
-function yearStart(year: number) {
-  return Date.UTC(year, 0, 1) / 1000
 }
 
 function bucketSql(resolution: ClimateResolution) {
@@ -48,8 +45,6 @@ export const climateRoutes = createApp()
   .get('/rooms/:id', validate('param', idParam), async (c) => {
     const { id } = c.req.valid('param')
     const year = new Date().getUTCFullYear()
-    const thisStart = yearStart(year)
-    const prevStart = yearStart(year - 1)
     const span = await c.env.DB.prepare(
       `SELECT MIN(CAST(strftime('%s', measured_at) AS INTEGER)) AS first,
               MAX(CAST(strftime('%s', measured_at) AS INTEGER)) AS last
@@ -64,20 +59,18 @@ export const climateRoutes = createApp()
     const resolution: ClimateResolution =
       days <= RAW_MAX_DAYS ? 'raw' : days <= DAILY_MAX_DAYS ? 'day' : 'week'
     const { time, group } = bucketSql(resolution)
-    // Last year is shifted into this year, so both lines share one time axis.
-    const series = (from: string, to: string, shift: number) =>
+    const series = (from: string, to: string) =>
       c.env.DB.prepare(
-        `SELECT ${time} + ? AS t, AVG(temperature) AS temperature, AVG(humidity) AS humidity
+        `SELECT ${time} AS t, AVG(temperature) AS temperature, AVG(humidity) AS humidity
          FROM room_readings
          WHERE room_id = ? AND measured_at >= ? AND measured_at < ?
          GROUP BY ${group}
          ORDER BY t`,
       )
-        .bind(shift, id, from, to)
+        .bind(id, from, to)
         .all<ClimatePoint>()
-    const [current, previous, latest, sensors] = await Promise.all([
-      series(`${year}-01-01`, `${year + 1}-01-01`, 0),
-      series(`${year - 1}-01-01`, `${year}-01-01`, thisStart - prevStart),
+    const [current, latest, sensors] = await Promise.all([
+      series(`${year}-01-01`, `${year + 1}-01-01`),
       c.env.DB.prepare(
         `SELECT temperature, humidity, measured_at FROM room_readings
          WHERE room_id = ? ORDER BY measured_at DESC LIMIT 1`,
@@ -85,11 +78,44 @@ export const climateRoutes = createApp()
         .bind(id)
         .first<NonNullable<RoomClimate['latest']>>(),
       c.env.DB.prepare(
-        'SELECT COUNT(*) AS count FROM room_sensors WHERE room_id = ?',
+        'SELECT sensibo_id, name FROM room_sensors WHERE room_id = ?',
       )
         .bind(id)
-        .first<number>('count'),
+        .all<{ sensibo_id: string; name: string | null }>(),
     ])
+    const sensor = sensors.results[0]
+    let sensorName = sensor?.name ?? null
+    if (sensor && sensorName === null && c.env.SENSIBO_API_KEY) {
+      try {
+        const devices = await fetchSensiboDevices(c.env.SENSIBO_API_KEY)
+        sensorName =
+          devices.find((d) => d.id === sensor.sensibo_id)?.name ?? null
+        if (sensorName !== null) {
+          await c.env.DB.prepare(
+            'UPDATE room_sensors SET name = ? WHERE sensibo_id = ?',
+          )
+            .bind(sensorName, sensor.sensibo_id)
+            .run()
+        }
+      } catch (error) {
+        console.error('Sensibo name lookup failed', error)
+      }
+    }
+    const averageRow = await c.env.DB.prepare(
+      `SELECT ${AVERAGE_DAYS.map(
+        (d) =>
+          `AVG(CASE WHEN measured_at >= datetime('now', '-${d} days') THEN temperature END) AS t${d},
+           AVG(CASE WHEN measured_at >= datetime('now', '-${d} days') THEN humidity END) AS h${d}`,
+      ).join(', ')}
+       FROM room_readings WHERE room_id = ? AND measured_at >= datetime('now', '-90 days')`,
+    )
+      .bind(id)
+      .first<Record<string, number | null>>()
+    const averages = AVERAGE_DAYS.map((days) => ({
+      days,
+      temperature: round(averageRow?.[`t${days}`] ?? null),
+      humidity: round(averageRow?.[`h${days}`] ?? null),
+    }))
     const clean = (points: ClimatePoint[]) =>
       points.map((p) => ({
         t: p.t,
@@ -97,11 +123,12 @@ export const climateRoutes = createApp()
         humidity: round(p.humidity),
       }))
     const body: RoomClimate = {
-      sensor_count: sensors ?? 0,
+      sensor_count: sensors.results.length,
+      sensor_name: sensorName,
+      averages,
       year,
       resolution,
       current: clean(current.results),
-      previous: clean(previous.results),
       latest,
     }
     return c.json(body)
@@ -163,7 +190,7 @@ export const climateRoutes = createApp()
     validate('json', sensorBody),
     async (c) => {
       const { sensiboId } = c.req.valid('param')
-      const { room_id } = c.req.valid('json')
+      const { room_id, name } = c.req.valid('json')
       if (room_id === null) {
         await c.env.DB.prepare('DELETE FROM room_sensors WHERE sensibo_id = ?')
           .bind(sensiboId)
@@ -181,9 +208,9 @@ export const climateRoutes = createApp()
           'DELETE FROM room_sensors WHERE room_id = ? AND sensibo_id != ?',
         ).bind(room_id, sensiboId),
         c.env.DB.prepare(
-          `INSERT INTO room_sensors (sensibo_id, room_id) VALUES (?, ?)
-           ON CONFLICT (sensibo_id) DO UPDATE SET room_id = excluded.room_id`,
-        ).bind(sensiboId, room_id),
+          `INSERT INTO room_sensors (sensibo_id, room_id, name) VALUES (?, ?, ?)
+           ON CONFLICT (sensibo_id) DO UPDATE SET room_id = excluded.room_id, name = excluded.name`,
+        ).bind(sensiboId, room_id, name ?? null),
       ])
       return c.body(null, 204)
     },
