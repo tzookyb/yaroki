@@ -127,7 +127,8 @@ button:hover:not(:disabled),
   background: var(--primary-hover);
 }
 
-button:disabled {
+button:disabled,
+.button[aria-disabled='true'] {
   opacity: 0.5;
   cursor: default;
 }
@@ -464,12 +465,6 @@ label select {
 }
 
 /* Room page */
-
-.photo-actions {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-}
 
 .plants {
   display: grid;
