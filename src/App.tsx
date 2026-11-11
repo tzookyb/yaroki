@@ -14,7 +14,8 @@ function subscribeToHash(onChange: () => void) {
 function App() {
   const hash = useSyncExternalStore(subscribeToHash, () => window.location.hash)
   const roomId = hash.match(/^#\/rooms\/(\d+)$/)?.[1]
-  const plantId = hash.match(/^#\/plants\/(\d+)$/)?.[1]
+  const plantMatch = hash.match(/^#\/plants\/(\d+)(\?from=home)?$/)
+  const plantId = plantMatch?.[1]
   const [signedIn, setSignedIn] = useState<boolean | null>(null)
 
   useEffect(() => {
@@ -33,7 +34,7 @@ function App() {
       {!signedIn ? (
         <LoginPage onSignIn={() => setSignedIn(true)} />
       ) : plantId ? (
-        <PlantPage key={plantId} id={plantId} />
+        <PlantPage key={plantId} id={plantId} fromHome={!!plantMatch?.[2]} />
       ) : roomId ? (
         <RoomPage key={roomId} id={roomId} />
       ) : (

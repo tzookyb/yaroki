@@ -80,6 +80,11 @@ function taskKey(task: Task) {
   return `${task.type}-${task.plant_id}`
 }
 
+// `from=home` makes Back on the plant page return here instead of to the plant's room.
+function plantHref(task: Task) {
+  return `#/plants/${task.plant_id}?from=home`
+}
+
 const DRAWER_MS = 200
 
 type TaskGroupsProps = {
@@ -108,11 +113,20 @@ function TaskGroups({ list, busy, onDone, onSkip }: TaskGroupsProps) {
             const labels = TASK_LABELS[task.type]
             const label = dueLabel(task, group, list.today)
             return (
-              <li key={key} className={task.done_today ? 'done' : ''}>
+              <li
+                key={key}
+                className={task.done_today ? 'done' : ''}
+                onClick={(event) => {
+                  // The link inside covers keyboard use; the rest of the card is a bigger tap target.
+                  if (!(event.target as Element).closest('button, a')) {
+                    window.location.hash = plantHref(task)
+                  }
+                }}
+              >
                 {task.photo_key && (
                   <img src={photoUrl(task.photo_key)} alt="" loading="lazy" />
                 )}
-                <a className="task-info" href={`#/plants/${task.plant_id}`}>
+                <a className="task-info" href={plantHref(task)}>
                   <strong>
                     {labels?.action ?? task.type} את {task.plant_name ?? 'הצמח'}
                   </strong>
