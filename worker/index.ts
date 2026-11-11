@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/cloudflare'
 import { secureHeaders } from 'hono/secure-headers'
 import { createApp } from './app'
-import { enrichPendingPlants } from './enrich'
+import { backfillReferenceImages, enrichPendingPlants } from './enrich'
 import { climateRoutes } from './routes/climate'
 import { photoRoutes } from './routes/photos'
 import { plantRoutes } from './routes/plants'
@@ -61,7 +61,7 @@ const handler = {
     switch (controller.cron) {
       case HOURLY_CHECK: {
         // Independent jobs: a failure in one must not skip the others.
-        const jobs = [sendReminderIfTime(env)]
+        const jobs = [sendReminderIfTime(env), backfillReferenceImages(env)]
         if (
           new Date(controller.scheduledTime).getUTCHours() === DAILY_UTC_HOUR
         ) {

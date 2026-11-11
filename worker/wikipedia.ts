@@ -1,5 +1,13 @@
 const TIMEOUT_MS = 5_000
 
+// The summary API serves thumbnails from thumb.wikimedia.org, full images from upload.wikimedia.org.
+function isWikimediaImage(url: string) {
+  return (
+    url.startsWith('https://thumb.wikimedia.org/') ||
+    url.startsWith('https://upload.wikimedia.org/')
+  )
+}
+
 // A reference photo is a nice-to-have, so every failure is just "no photo".
 export async function findReferenceImage(species: string) {
   try {
@@ -15,10 +23,7 @@ export async function findReferenceImage(species: string) {
     }
     const page = await response.json<{ thumbnail?: { source?: unknown } }>()
     const url = page.thumbnail?.source
-    return typeof url === 'string' &&
-      url.startsWith('https://upload.wikimedia.org/')
-      ? url
-      : null
+    return typeof url === 'string' && isWikimediaImage(url) ? url : null
   } catch {
     return null
   }
