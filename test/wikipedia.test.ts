@@ -9,11 +9,11 @@ describe('findReferenceImage', () => {
   it('returns the thumbnail of the species page', async () => {
     const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async () =>
       Response.json({
-        thumbnail: { source: 'https://upload.wikimedia.org/a.jpg' },
+        thumbnail: { source: 'https://thumb.wikimedia.org/a.jpg' },
       }),
     )
     expect(await findReferenceImage('Ficus lyrata')).toBe(
-      'https://upload.wikimedia.org/a.jpg',
+      'https://thumb.wikimedia.org/a.jpg',
     )
     expect(String(fetch.mock.calls[0][0])).toContain('/Ficus_lyrata')
   })
