@@ -17,7 +17,6 @@ function RoomPage({ id }: { id: string }) {
   const [room, setRoom] = useState<RoomDetails | null>(null)
   const [adding, setAdding] = useState(false)
   const [identifying, setIdentifying] = useState<number[]>([])
-  const [choosingPhoto, setChoosingPhoto] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -59,7 +58,6 @@ function RoomPage({ id }: { id: string }) {
       return
     }
 
-    setChoosingPhoto(false)
     setAdding(true)
     setError(null)
     let plant: Plant
@@ -183,37 +181,17 @@ function RoomPage({ id }: { id: string }) {
                 ),
             )}
           </ul>
-          <button
-            type="button"
-            disabled={adding}
-            aria-expanded={choosingPhoto}
-            onClick={() => setChoosingPhoto(!choosingPhoto)}
-          >
-            {adding ? 'מוסיפים…' : 'הוספת צמח'}
-          </button>
-          {choosingPhoto && (
-            <div className="photo-actions">
-              <label className="button secondary">
-                צילום
-                <input
-                  className="visually-hidden"
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={handlePhoto}
-                />
-              </label>
-              <label className="button secondary">
-                בחירה מהגלריה
-                <input
-                  className="visually-hidden"
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhoto}
-                />
-              </label>
-            </div>
-          )}
+          <label className="button" aria-disabled={adding}>
+            {adding ? 'מוסיפים…' : 'הוספת צמח בצילום'}
+            <input
+              className="visually-hidden"
+              type="file"
+              accept="image/*"
+              capture="environment"
+              disabled={adding}
+              onChange={handlePhoto}
+            />
+          </label>
         </>
       )}
     </>
