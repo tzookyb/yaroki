@@ -99,7 +99,7 @@ export type TaskList = {
 export type ClimateResolution = 'raw' | 'day' | 'week'
 
 export type ClimatePoint = {
-  // Unix seconds. Last year's points are shifted a year forward to share this year's axis.
+  // Unix seconds.
   t: number
   temperature: number
   humidity: number | null
@@ -108,11 +108,18 @@ export type ClimatePoint = {
 export type RoomClimate = {
   // Sensibo devices linked to the room. Most rooms have none, and then show no readings.
   sensor_count: number
+  // Name of the linked Sensibo device, shown as the source of the readings.
+  sensor_name: string | null
+  // Means over the last 7, 30 and 90 days of whatever data exists; null with none.
+  averages: {
+    days: number
+    temperature: number | null
+    humidity: number | null
+  }[]
   year: number
   // Chosen by how much data this year has: single readings, daily averages, then weekly averages.
   resolution: ClimateResolution
   current: ClimatePoint[]
-  previous: ClimatePoint[]
   latest: {
     temperature: number
     humidity: number | null

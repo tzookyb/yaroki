@@ -715,16 +715,6 @@ form.room-profile {
   stroke-linecap: round;
 }
 
-.climate-chart .line.previous {
-  stroke-dasharray: 4 3;
-  stroke-width: 1.25;
-  opacity: 0.75;
-}
-
-.climate-chart .dot.previous {
-  opacity: 0.75;
-}
-
 .series-temperature,
 .key-temperature,
 .axis-temperature {
@@ -1017,4 +1007,43 @@ form.room-profile {
   width: 100%;
   border-radius: var(--radius-small);
   text-align: start;
+}
+
+.room-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.room-title h1 {
+  margin: 0;
+  min-width: 0;
+}
+
+.room-title .button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.climate-averages {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  text-align: start;
+}
+
+.climate-averages caption {
+  text-align: start;
+}
+
+.climate-averages th,
+.climate-averages td {
+  padding: 0.2rem 0;
+  text-align: start;
+  font-weight: normal;
+}
+
+.climate-averages thead th {
+  color: var(--muted);
 }

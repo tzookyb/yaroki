@@ -93,8 +93,8 @@ const METRIC_LABEL: Record<Metric, string> = {
   temperature: 'טמפרטורה',
 }
 
-function Chart({ climate, outdoor }: { climate: Climate; outdoor: boolean }) {
-  const { current, previous, year, resolution } = climate
+function Chart({ climate }: { climate: Climate }) {
+  const { current, year, resolution } = climate
   const [picked, setPicked] = useState<number | null>(null)
 
   let start: number
@@ -110,10 +110,6 @@ function Chart({ climate, outdoor }: { climate: Climate; outdoor: boolean }) {
     start -= pad
     end += pad
   }
-  // Outdoor weather has no meaningful last year to compare with here.
-  const shownPrevious = outdoor
-    ? []
-    : previous.filter((p) => p.t >= start && p.t <= end)
   const x = (t: number) =>
     LEFT + ((t - start) / (end - start)) * (WIDTH - LEFT - RIGHT)
 
@@ -142,16 +138,15 @@ function Chart({ climate, outdoor }: { climate: Climate; outdoor: boolean }) {
         return value === null ? [] : [{ t: p.t, value }]
       })
     const now = values(current)
-    const before = values(shownPrevious)
     if (now.length === 0) {
       return null
     }
-    const all = [...now, ...before].map((p) => p.value)
+    const all = now.map((p) => p.value)
     const low = Math.floor(Math.min(...all) - 0.5)
     const high = Math.ceil(Math.max(...all) + 0.5)
     const y = (value: number) =>
       HEIGHT - BOTTOM - ((value - low) / (high - low)) * (HEIGHT - TOP - BOTTOM)
-    return { metric, now, before, low, high, y }
+    return { metric, now, low, high, y }
   }
 
   const series = [scale('temperature'), scale('humidity')].flatMap((s) =>
@@ -278,7 +273,6 @@ function Chart({ climate, outdoor }: { climate: Climate; outdoor: boolean }) {
           ))}
           {series.map((s) => (
             <g key={s.metric} className={`series series-${s.metric}`}>
-              {drawLine(s, s.before, 'previous')}
               {drawLine(s, s.now, 'current')}
             </g>
           ))}
@@ -313,7 +307,6 @@ function Chart({ climate, outdoor }: { climate: Climate; outdoor: boolean }) {
       <p className="muted climate-legend">
         <span className="key key-temperature">טמפרטורה</span>
         {right && <span className="key key-humidity">לחות</span>}
-        {!outdoor && <span>קו מקווקו: {year - 1}</span>}
         <span>
           {resolution === 'raw'
             ? 'מדידות בודדות'
@@ -353,7 +346,7 @@ export function SensorPicker({
           await setSensorRoom(previous.id, null)
         }
       } else {
-        await setSensorRoom(id, roomId)
+        await setSensorRoom(id, roomId, devices?.find((d) => d.id === id)?.name)
       }
       setDevices(
         (current) =>
@@ -491,7 +484,7 @@ function RoomClimate({
           </p>
         )}
         {climate && climate.current.length > 0 ? (
-          <Chart climate={climate} outdoor={locationType !== 'indoor'} />
+          <Chart climate={climate} />
         ) : (
           climate &&
           (locationType !== 'indoor' || climate.sensor_count > 0) && (
@@ -500,7 +493,44 @@ function RoomClimate({
             </p>
           )
         )}
-        <p className="muted">את מיקום החדר וחיישן ה-Sensibo מגדירים בהגדרות.</p>
+        {climate && climate.current.length > 0 && (
+          <table className="climate-averages">
+            <caption className="muted">ממוצעים</caption>
+            <thead>
+              <tr>
+                <th />
+                <th>טמפרטורה</th>
+                <th>לחות</th>
+              </tr>
+            </thead>
+            <tbody>
+              {climate.averages.map((a) => (
+                <tr key={a.days}>
+                  <th scope="row">{a.days} ימים</th>
+                  <td>
+                    {a.temperature === null ? (
+                      '—'
+                    ) : (
+                      <bdi dir="ltr">{a.temperature}°</bdi>
+                    )}
+                  </td>
+                  <td>
+                    {a.humidity === null ? '—' : `${Math.round(a.humidity)}%`}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        {climate && climate.current.length > 0 && (
+          <p className="muted">
+            {locationType !== 'indoor'
+              ? 'לפי מידע מזג אוויר'
+              : climate.sensor_name
+                ? `לפי חיישן ${climate.sensor_name}`
+                : 'לפי חיישן Sensibo'}
+          </p>
+        )}
       </div>
     </details>
   )
