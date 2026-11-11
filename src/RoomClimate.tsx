@@ -20,7 +20,7 @@ const LOCATION_LABELS: Record<LocationType, string> = {
 const WIDTH = 320
 const HEIGHT = 180
 const LEFT = 30
-const RIGHT = 8
+const RIGHT = 30
 const TOP = 10
 const BOTTOM = 20
 const HOUR = 3600
@@ -135,7 +135,7 @@ function Chart({ climate, outdoor }: { climate: Climate; outdoor: boolean }) {
   const point = picked === null ? null : current[picked]
   const xTicks = timeTicks(start, end, year)
 
-  function plot(metric: Metric) {
+  function scale(metric: Metric) {
     const values = (points: Reading[]) =>
       points.flatMap((p) => {
         const value = p[metric]
@@ -151,116 +151,49 @@ function Chart({ climate, outdoor }: { climate: Climate; outdoor: boolean }) {
     const high = Math.ceil(Math.max(...all) + 0.5)
     const y = (value: number) =>
       HEIGHT - BOTTOM - ((value - low) / (high - low)) * (HEIGHT - TOP - BOTTOM)
-    const line = (points: typeof now) =>
-      points
-        .map((p) => `${x(p.t).toFixed(1)},${y(p.value).toFixed(1)}`)
-        .join(' ')
-    const unit = METRIC_UNIT[metric]
-    const pickedValue = point?.[metric]
+    return { metric, now, before, low, high, y }
+  }
+
+  const series = [scale('temperature'), scale('humidity')].flatMap((s) =>
+    s ? [s] : [],
+  )
+  const [left, right] = series
+
+  function drawLine(
+    s: (typeof series)[number],
+    points: typeof s.now,
+    className: string,
+  ) {
+    if (points.length === 1) {
+      return (
+        <circle
+          className={`dot ${className}`}
+          cx={x(points[0].t)}
+          cy={s.y(points[0].value)}
+          r={3}
+        />
+      )
+    }
     return (
-      // Time runs left to right even in the right-to-left page.
-      <svg
-        key={metric}
-        style={{ direction: 'ltr' }}
-        className="climate-chart"
-        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        role="img"
-        aria-label={`${METRIC_LABEL[metric]} בחדר, בין ${low} ל-${high}${unit}`}
-        onPointerDown={(event) => {
-          event.currentTarget.setPointerCapture(event.pointerId)
-          pick(event)
-        }}
-        onPointerMove={(event) => {
-          if (event.buttons > 0) {
-            pick(event)
-          }
-        }}
-        onPointerUp={() => setPicked(null)}
-        onPointerCancel={() => setPicked(null)}
-      >
-        {valueTicks(low, high).map((v) => (
-          <g key={v}>
-            <line
-              className="grid"
-              x1={LEFT}
-              x2={WIDTH - RIGHT}
-              y1={y(v)}
-              y2={y(v)}
-            />
-            <text x={LEFT - 4} y={y(v) + 3} textAnchor="end" className="axis">
-              {v}
-              {unit}
-            </text>
-          </g>
-        ))}
-        {xTicks.map((tick) => (
-          <g key={tick.t}>
-            <line
-              className="grid"
-              x1={x(tick.t)}
-              x2={x(tick.t)}
-              y1={TOP}
-              y2={HEIGHT - BOTTOM}
-            />
-            <text
-              x={x(tick.t)}
-              y={HEIGHT - 6}
-              textAnchor="middle"
-              className="axis"
-            >
-              {tick.label}
-            </text>
-          </g>
-        ))}
-        {before.length > 1 && (
-          <polyline className="line line-1" fill="none" points={line(before)} />
-        )}
-        {now.length > 1 && (
-          <polyline className="line line-0" fill="none" points={line(now)} />
-        )}
-        {before.length === 1 && (
-          <circle
-            className="dot dot-1"
-            cx={x(before[0].t)}
-            cy={y(before[0].value)}
-            r={2.5}
-          />
-        )}
-        {now.length === 1 && (
-          <circle
-            className="dot dot-0"
-            cx={x(now[0].t)}
-            cy={y(now[0].value)}
-            r={3}
-          />
-        )}
-        {point && (
-          <>
-            <line
-              className="guide"
-              x1={x(point.t)}
-              x2={x(point.t)}
-              y1={TOP}
-              y2={HEIGHT - BOTTOM}
-            />
-            {pickedValue != null && (
-              <circle
-                className="dot dot-0 picked"
-                cx={x(point.t)}
-                cy={y(pickedValue)}
-                r={5}
-              />
-            )}
-          </>
-        )}
-      </svg>
+      <polyline
+        className={`line ${className}`}
+        fill="none"
+        points={points
+          .map((p) => `${x(p.t).toFixed(1)},${s.y(p.value).toFixed(1)}`)
+          .join(' ')}
+      />
     )
   }
 
+  const label = series
+    .map(
+      (s) =>
+        `${METRIC_LABEL[s.metric]} בחדר, בין ${s.low} ל-${s.high}${METRIC_UNIT[s.metric]}`,
+    )
+    .join('. ')
+
   return (
     <>
-      {plot('humidity')}
-      {plot('temperature')}
       <p className="muted climate-readout" aria-live="off">
         {point ? (
           <>
@@ -273,9 +206,114 @@ function Chart({ climate, outdoor }: { climate: Climate; outdoor: boolean }) {
           'גררו על הגרף כדי לראות מדידה'
         )}
       </p>
+      {left && (
+        // Time runs left to right even in the right-to-left page.
+        <svg
+          style={{ direction: 'ltr' }}
+          className="climate-chart"
+          viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+          role="img"
+          aria-label={label}
+          onPointerDown={(event) => {
+            event.currentTarget.setPointerCapture(event.pointerId)
+            pick(event)
+          }}
+          onPointerMove={(event) => {
+            if (event.buttons > 0) {
+              pick(event)
+            }
+          }}
+          onPointerUp={() => setPicked(null)}
+          onPointerCancel={() => setPicked(null)}
+        >
+          {valueTicks(left.low, left.high).map((v) => (
+            <g key={v}>
+              <line
+                className="grid"
+                x1={LEFT}
+                x2={WIDTH - RIGHT}
+                y1={left.y(v)}
+                y2={left.y(v)}
+              />
+              <text
+                x={LEFT - 4}
+                y={left.y(v) + 3}
+                textAnchor="end"
+                className="axis axis-temperature"
+              >
+                {v}°
+              </text>
+            </g>
+          ))}
+          {right &&
+            valueTicks(right.low, right.high).map((v) => (
+              <text
+                key={v}
+                x={WIDTH - RIGHT + 4}
+                y={right.y(v) + 3}
+                textAnchor="start"
+                className="axis axis-humidity"
+              >
+                {v}%
+              </text>
+            ))}
+          {xTicks.map((tick) => (
+            <g key={tick.t}>
+              <line
+                className="grid"
+                x1={x(tick.t)}
+                x2={x(tick.t)}
+                y1={TOP}
+                y2={HEIGHT - BOTTOM}
+              />
+              <text
+                x={x(tick.t)}
+                y={HEIGHT - 6}
+                textAnchor="middle"
+                className="axis"
+              >
+                {tick.label}
+              </text>
+            </g>
+          ))}
+          {series.map((s) => (
+            <g key={s.metric} className={`series series-${s.metric}`}>
+              {drawLine(s, s.before, 'previous')}
+              {drawLine(s, s.now, 'current')}
+            </g>
+          ))}
+          {point && (
+            <>
+              <line
+                className="guide"
+                x1={x(point.t)}
+                x2={x(point.t)}
+                y1={TOP}
+                y2={HEIGHT - BOTTOM}
+              />
+              {series.map((s) => {
+                const value = point[s.metric]
+                return (
+                  value != null && (
+                    <g key={s.metric} className={`series series-${s.metric}`}>
+                      <circle
+                        className="dot current picked"
+                        cx={x(point.t)}
+                        cy={s.y(value)}
+                        r={5}
+                      />
+                    </g>
+                  )
+                )
+              })}
+            </>
+          )}
+        </svg>
+      )}
       <p className="muted climate-legend">
-        <span className="key key-0">{year}</span>
-        {!outdoor && <span className="key key-1">{year - 1}</span>}
+        <span className="key key-temperature">טמפרטורה</span>
+        {right && <span className="key key-humidity">לחות</span>}
+        {!outdoor && <span>קו מקווקו: {year - 1}</span>}
         <span>
           {resolution === 'raw'
             ? 'מדידות בודדות'
