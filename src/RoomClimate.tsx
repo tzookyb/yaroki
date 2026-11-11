@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent } from 'react'
+import { useEffect, useState, type PointerEvent } from 'react'
 import { LOCATION_TYPES } from '../shared/api'
 import {
   getRoomClimate,
@@ -75,7 +75,7 @@ function timeTicks(start: number, end: number, year: number): Tick[] {
   return ticks
 }
 
-function temperatureTicks(low: number, high: number) {
+function valueTicks(low: number, high: number) {
   const step = [1, 2, 5, 10, 20].find((s) => (high - low) / s <= 4) ?? 20
   const ticks: number[] = []
   for (let v = Math.ceil(low / step) * step; v <= high; v += step) {
@@ -84,10 +84,18 @@ function temperatureTicks(low: number, high: number) {
   return ticks
 }
 
-function Chart({ climate }: { climate: Climate }) {
+type Metric = 'humidity' | 'temperature'
+type Reading = Climate['current'][number]
+
+const METRIC_UNIT: Record<Metric, string> = { humidity: '%', temperature: '°' }
+const METRIC_LABEL: Record<Metric, string> = {
+  humidity: 'לחות',
+  temperature: 'טמפרטורה',
+}
+
+function Chart({ climate, outdoor }: { climate: Climate; outdoor: boolean }) {
   const { current, previous, year, resolution } = climate
   const [picked, setPicked] = useState<number | null>(null)
-  const svg = useRef<SVGSVGElement>(null)
 
   let start: number
   let end: number
@@ -102,22 +110,16 @@ function Chart({ climate }: { climate: Climate }) {
     start -= pad
     end += pad
   }
-  const shownPrevious = previous.filter((p) => p.t >= start && p.t <= end)
-  const all = [...current, ...shownPrevious].map((p) => p.temperature)
-  const low = Math.floor(Math.min(...all) - 0.5)
-  const high = Math.ceil(Math.max(...all) + 0.5)
+  // Outdoor weather has no meaningful last year to compare with here.
+  const shownPrevious = outdoor
+    ? []
+    : previous.filter((p) => p.t >= start && p.t <= end)
   const x = (t: number) =>
     LEFT + ((t - start) / (end - start)) * (WIDTH - LEFT - RIGHT)
-  const y = (temp: number) =>
-    HEIGHT - BOTTOM - ((temp - low) / (high - low)) * (HEIGHT - TOP - BOTTOM)
-  const line = (points: Climate['current']) =>
-    points
-      .map((p) => `${x(p.t).toFixed(1)},${y(p.temperature).toFixed(1)}`)
-      .join(' ')
 
   function pick(event: PointerEvent<SVGSVGElement>) {
-    const box = svg.current?.getBoundingClientRect()
-    if (!box || current.length === 0) {
+    const box = event.currentTarget.getBoundingClientRect()
+    if (current.length === 0) {
       return
     }
     const px = ((event.clientX - box.left) / box.width) * WIDTH
@@ -133,16 +135,37 @@ function Chart({ climate }: { climate: Climate }) {
   const point = picked === null ? null : current[picked]
   const xTicks = timeTicks(start, end, year)
 
-  return (
-    <>
-      {/* Time runs left to right even in the right-to-left page. */}
+  function plot(metric: Metric) {
+    const values = (points: Reading[]) =>
+      points.flatMap((p) => {
+        const value = p[metric]
+        return value === null ? [] : [{ t: p.t, value }]
+      })
+    const now = values(current)
+    const before = values(shownPrevious)
+    if (now.length === 0) {
+      return null
+    }
+    const all = [...now, ...before].map((p) => p.value)
+    const low = Math.floor(Math.min(...all) - 0.5)
+    const high = Math.ceil(Math.max(...all) + 0.5)
+    const y = (value: number) =>
+      HEIGHT - BOTTOM - ((value - low) / (high - low)) * (HEIGHT - TOP - BOTTOM)
+    const line = (points: typeof now) =>
+      points
+        .map((p) => `${x(p.t).toFixed(1)},${y(p.value).toFixed(1)}`)
+        .join(' ')
+    const unit = METRIC_UNIT[metric]
+    const pickedValue = point?.[metric]
+    return (
+      // Time runs left to right even in the right-to-left page.
       <svg
-        ref={svg}
+        key={metric}
         style={{ direction: 'ltr' }}
         className="climate-chart"
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         role="img"
-        aria-label={`טמפרטורה בחדר השנה לעומת השנה שעברה, בין ${low} ל-${high} מעלות`}
+        aria-label={`${METRIC_LABEL[metric]} בחדר, בין ${low} ל-${high}${unit}`}
         onPointerDown={(event) => {
           event.currentTarget.setPointerCapture(event.pointerId)
           pick(event)
@@ -155,7 +178,7 @@ function Chart({ climate }: { climate: Climate }) {
         onPointerUp={() => setPicked(null)}
         onPointerCancel={() => setPicked(null)}
       >
-        {temperatureTicks(low, high).map((v) => (
+        {valueTicks(low, high).map((v) => (
           <g key={v}>
             <line
               className="grid"
@@ -165,7 +188,8 @@ function Chart({ climate }: { climate: Climate }) {
               y2={y(v)}
             />
             <text x={LEFT - 4} y={y(v) + 3} textAnchor="end" className="axis">
-              {v}°
+              {v}
+              {unit}
             </text>
           </g>
         ))}
@@ -188,33 +212,25 @@ function Chart({ climate }: { climate: Climate }) {
             </text>
           </g>
         ))}
-        {shownPrevious.length > 1 && (
-          <polyline
-            className="line line-1"
-            fill="none"
-            points={line(shownPrevious)}
-          />
+        {before.length > 1 && (
+          <polyline className="line line-1" fill="none" points={line(before)} />
         )}
-        {current.length > 1 && (
-          <polyline
-            className="line line-0"
-            fill="none"
-            points={line(current)}
-          />
+        {now.length > 1 && (
+          <polyline className="line line-0" fill="none" points={line(now)} />
         )}
-        {shownPrevious.length === 1 && (
+        {before.length === 1 && (
           <circle
             className="dot dot-1"
-            cx={x(shownPrevious[0].t)}
-            cy={y(shownPrevious[0].temperature)}
+            cx={x(before[0].t)}
+            cy={y(before[0].value)}
             r={2.5}
           />
         )}
-        {current.length === 1 && (
+        {now.length === 1 && (
           <circle
             className="dot dot-0"
-            cx={x(current[0].t)}
-            cy={y(current[0].temperature)}
+            cx={x(now[0].t)}
+            cy={y(now[0].value)}
             r={3}
           />
         )}
@@ -227,15 +243,24 @@ function Chart({ climate }: { climate: Climate }) {
               y1={TOP}
               y2={HEIGHT - BOTTOM}
             />
-            <circle
-              className="dot dot-0 picked"
-              cx={x(point.t)}
-              cy={y(point.temperature)}
-              r={5}
-            />
+            {pickedValue != null && (
+              <circle
+                className="dot dot-0 picked"
+                cx={x(point.t)}
+                cy={y(pickedValue)}
+                r={5}
+              />
+            )}
           </>
         )}
       </svg>
+    )
+  }
+
+  return (
+    <>
+      {plot('humidity')}
+      {plot('temperature')}
       <p className="muted climate-readout" aria-live="off">
         {point ? (
           <>
@@ -250,7 +275,7 @@ function Chart({ climate }: { climate: Climate }) {
       </p>
       <p className="muted climate-legend">
         <span className="key key-0">{year}</span>
-        <span className="key key-1">{year - 1}</span>
+        {!outdoor && <span className="key key-1">{year - 1}</span>}
         <span>
           {resolution === 'raw'
             ? 'מדידות בודדות'
@@ -428,7 +453,7 @@ function RoomClimate({
           </p>
         )}
         {climate && climate.current.length > 0 ? (
-          <Chart climate={climate} />
+          <Chart climate={climate} outdoor={locationType !== 'indoor'} />
         ) : (
           climate &&
           (locationType !== 'indoor' || climate.sensor_count > 0) && (
