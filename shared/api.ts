@@ -110,6 +110,8 @@ export type RoomClimate = {
   sensor_count: number
   // Name of the linked Sensibo device, shown as the source of the readings.
   sensor_name: string | null
+  // An indoor room with no sensor of its own, showing the average of all the house's sensors.
+  home_average: boolean
   // Means over the last 7, 30 and 90 days of whatever data exists; null with none.
   averages: {
     days: number

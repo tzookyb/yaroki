@@ -13,6 +13,7 @@ beforeEach(async () => {
       'plants',
       'home_location',
       'room_readings',
+      'home_readings',
       'room_sensors',
       'rooms',
       'sessions',

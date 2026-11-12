@@ -142,12 +142,17 @@ describe('collecting readings', () => {
     ])
   })
 
-  it('does not call Sensibo for the key when no device is mapped', async () => {
-    const spy = mockFetch({ 'sensibo.com': PODS })
+  it('keeps readings of devices that are not linked to a room for the home average', async () => {
+    mockFetch({ 'sensibo.com': PODS })
     await collectReadings(env)
-    expect(
-      spy.mock.calls.some(([url]) => String(url).includes('sensibo')),
-    ).toBe(false)
+    const { results } = await env.DB.prepare(
+      'SELECT source_id, temperature FROM home_readings',
+    ).all()
+    expect(results).toEqual([{ source_id: 'abcd1234', temperature: 24.5 }])
+    const roomReadings = await env.DB.prepare(
+      'SELECT 1 FROM room_readings',
+    ).all()
+    expect(roomReadings.results).toEqual([])
   })
 
   it('stores the weather for outdoor rooms only', async () => {
@@ -316,6 +321,7 @@ describe('room location and climate', () => {
     expect({ ...body, averages: undefined }).toEqual({
       sensor_count: 0,
       sensor_name: null,
+      home_average: false,
       averages: undefined,
       year: 2026,
       resolution: 'raw',
@@ -383,6 +389,32 @@ describe('room location and climate', () => {
       { days: 30, temperature: 25, humidity: 40 },
       { days: 90, temperature: 20, humidity: 55 },
     ])
+  })
+
+  it('shows the average of all sensors in an indoor room without its own', async () => {
+    vi.useFakeTimers({
+      toFake: ['Date'],
+      now: new Date('2026-11-08T12:00:00Z'),
+    })
+    const kitchen = await addRoom('kitchen')
+    for (const [source, time, temp, humidity] of [
+      ['a', '2026-11-08 09:00:00', 20, 40],
+      ['b', '2026-11-08 09:10:00', 24, 60],
+      ['a', '2026-11-08 10:00:00', 22, 40],
+      ['b', '2026-11-08 10:05:00', 26, 50],
+    ] as const) {
+      await env.DB.prepare(
+        'INSERT INTO home_readings (source_id, measured_at, temperature, humidity) VALUES (?, ?, ?, ?)',
+      )
+        .bind(source, time, temp, humidity)
+        .run()
+    }
+    const body = (await (
+      await api(`/climate/rooms/${kitchen}`, {}, session)
+    ).json()) as RoomClimate
+    expect(body.home_average).toBe(true)
+    expect(body.current.map((p) => p.temperature)).toEqual([22, 24])
+    expect(body.latest).toMatchObject({ temperature: 24, humidity: 45 })
   })
 
   it('returns no points and no latest for a room without readings', async () => {
