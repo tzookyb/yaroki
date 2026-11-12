@@ -539,7 +539,7 @@ function RoomClimate({
             {locationType !== 'indoor'
               ? 'לפי מידע מזג אוויר'
               : climate.home_average
-                ? 'ממוצע של חיישני הבית (אין חיישן בחדר הזה)'
+                ? 'לפי ממוצע של כל חיישני הבית'
                 : climate.sensor_name
                   ? `לפי חיישן ${climate.sensor_name}`
                   : 'לפי חיישן Sensibo'}
