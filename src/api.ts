@@ -139,6 +139,10 @@ export function reidentifyPlant(id: number) {
   return request<Plant>(`/api/plants/${id}/reidentify`, { method: 'POST' })
 }
 
+export function confirmPlant(id: number) {
+  return request<Plant>(`/api/plants/${id}/confirm`, { method: 'POST' })
+}
+
 export function deletePlant(id: number) {
   return send(`/api/plants/${id}`, { method: 'DELETE' })
 }

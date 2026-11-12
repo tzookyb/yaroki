@@ -1,7 +1,7 @@
 import { ENRICH_VERSION, type Plant, type RoomProfile } from '../shared/api'
 import { identifyPlant } from './gemini'
 import { latestReading } from './roomReading'
-import { findReferenceImage } from './wikipedia'
+import { findReferenceImages } from './wikipedia'
 
 type Outcome =
   { plant: Plant } | { error: string; status: 404 | 422 | 502 | 503 }
@@ -58,7 +58,7 @@ export async function identifyAndSave(
   if (!identification) {
     return { error: 'No plant in photo', status: 422 }
   }
-  const referenceImage = await findReferenceImage(identification.species)
+  const referenceImages = await findReferenceImages(identification.species)
   // A name the owner changed is kept. Only the name the AI gave is replaced.
   const name =
     retry && plant.name && plant.name !== plant.common_name
@@ -68,8 +68,9 @@ export async function identifyAndSave(
     `UPDATE plants
      SET name = ?, species = ?, common_name = ?, english_name = ?, category = ?,
          light_needs = ?, water_every_days = ?, humidity_needs = ?, temp_min = ?,
-         temp_max = ?, description = ?, reference_image_url = ?, care_notes = ?,
-         enriched_version = ?, rejected_species = ?
+         temp_max = ?, description = ?, reference_image_url = ?, reference_images = ?,
+         care_notes = ?, enriched_version = ?, rejected_species = ?,
+         identification_confirmed = 0
      WHERE id = ?
      RETURNING *`,
   )
@@ -85,7 +86,8 @@ export async function identifyAndSave(
       identification.temp_min,
       identification.temp_max,
       identification.description,
-      referenceImage,
+      referenceImages[0] ?? null,
+      JSON.stringify(referenceImages),
       identification.care_notes,
       ENRICH_VERSION,
       JSON.stringify(rejected),

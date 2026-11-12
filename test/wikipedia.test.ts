@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { findReferenceImage } from '../worker/wikipedia'
+import { findReferenceImage, findReferenceImages } from '../worker/wikipedia'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -32,5 +32,44 @@ describe('findReferenceImage', () => {
     expect(await findReferenceImage('Nothing here')).toBeNull()
     vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('offline'))
     expect(await findReferenceImage('Ficus lyrata')).toBeNull()
+  })
+})
+
+describe('findReferenceImages', () => {
+  it('puts the lead photo first and adds photos from the media list', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      String(input).includes('/media-list/')
+        ? Response.json({
+            items: [
+              {
+                type: 'image',
+                title: 'File:Map.svg',
+                srcset: [{ src: '//upload.wikimedia.org/map.svg' }],
+              },
+              {
+                type: 'image',
+                title: 'File:Leaf.jpg',
+                srcset: [{ src: '//upload.wikimedia.org/leaf.jpg' }],
+              },
+              {
+                type: 'image',
+                title: 'File:Evil.jpg',
+                srcset: [{ src: '//evil.test/evil.jpg' }],
+              },
+            ],
+          })
+        : Response.json({
+            thumbnail: { source: 'https://thumb.wikimedia.org/a.jpg' },
+          }),
+    )
+    expect(await findReferenceImages('Ficus lyrata')).toEqual([
+      'https://thumb.wikimedia.org/a.jpg',
+      'https://upload.wikimedia.org/leaf.jpg',
+    ])
+  })
+
+  it('returns an empty list when nothing is found', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('offline'))
+    expect(await findReferenceImages('Nothing')).toEqual([])
   })
 })

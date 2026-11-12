@@ -283,6 +283,34 @@ describe('plant details', () => {
   })
 })
 
+describe('confirming an identification', () => {
+  it('marks an identified plant as confirmed', async () => {
+    const plant = await addPlant({})
+    await env.DB.prepare(
+      "UPDATE plants SET species = 'Ficus lyrata' WHERE id = ?",
+    )
+      .bind(plant)
+      .run()
+    const response = await api(
+      `/plants/${plant}/confirm`,
+      { method: 'POST' },
+      session,
+    )
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ identification_confirmed: 1 })
+  })
+
+  it('answers 404 for a plant that was never identified', async () => {
+    const plant = await addPlant({})
+    const response = await api(
+      `/plants/${plant}/confirm`,
+      { method: 'POST' },
+      session,
+    )
+    expect(response.status).toBe(404)
+  })
+})
+
 describe('identifying a plant', () => {
   it('saves what Gemini returns', async () => {
     await env.PHOTOS.put('plants/a.webp', new Uint8Array([1]))

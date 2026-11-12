@@ -11,6 +11,7 @@ import {
 import { CATEGORY_LABELS, LIGHT_LABELS, wateringLabel } from './labels'
 import { ROOMS_CHANGED } from './ManageRooms'
 import { resizePhoto } from './photo'
+import IdentityCheck from './IdentityCheck'
 import RoomClimate from './RoomClimate'
 
 function RoomPage({ id }: { id: string }) {
@@ -177,6 +178,24 @@ function RoomPage({ id }: { id: string }) {
                             </span>
                           )}
                           {plant.care_notes && <span>{plant.care_notes}</span>}
+                          {!plant.identification_confirmed && (
+                            <IdentityCheck
+                              plant={plant}
+                              onChange={(updated) =>
+                                setRoom(
+                                  (current) =>
+                                    current && {
+                                      ...current,
+                                      plants: current.plants.map((other) =>
+                                        other.id === updated.id
+                                          ? updated
+                                          : other,
+                                      ),
+                                    },
+                                )
+                              }
+                            />
+                          )}
                         </>
                       ) : (
                         <button
