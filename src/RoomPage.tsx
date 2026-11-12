@@ -100,7 +100,7 @@ function RoomPage({ id }: { id: string }) {
   return (
     <>
       <a href="#/" className="back-link">
-        → חדרים
+        → חזרה לחדרים
       </a>
       <div className="room-title">
         <h1>{room?.name}</h1>

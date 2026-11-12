@@ -24,6 +24,10 @@ function App() {
       .catch(() => setSignedIn(false))
   }, [])
 
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [hash])
+
   if (signedIn === null) {
     return null
   }
