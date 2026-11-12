@@ -35,26 +35,45 @@ export function saveReadings(
     .run()
 }
 
+function saveHomeReadings(
+  db: D1Database,
+  sourceId: string,
+  readings: WeatherReading[],
+) {
+  return db.batch(
+    readings.map((r) =>
+      db
+        .prepare(
+          `INSERT OR IGNORE INTO home_readings (source_id, measured_at, temperature, humidity)
+           VALUES (?, ?, ?, ?)`,
+        )
+        .bind(sourceId, r.measured_at, r.temperature, r.humidity),
+    ),
+  )
+}
+
 async function collectSensibo(env: Env) {
   const { results: sensors } = await env.DB.prepare(
     'SELECT sensibo_id, room_id FROM room_sensors',
   ).all<{ sensibo_id: string; room_id: number }>()
-  if (sensors.length === 0) {
-    return
-  }
-  const devices = await fetchSensiboDevices(env.SENSIBO_API_KEY)
-  for (const sensor of sensors) {
-    const device = devices.find((d) => d.id === sensor.sensibo_id)
-    if (device?.temperature == null || !device.measured_at) {
+  const roomOf = new Map(sensors.map((s) => [s.sensibo_id, s.room_id]))
+  // Every device feeds the home average, linked to a room or not.
+  for (const device of await fetchSensiboDevices(env.SENSIBO_API_KEY)) {
+    if (device.temperature == null || !device.measured_at) {
       continue
     }
-    await saveReadings(env.DB, sensor.room_id, sensor.sensibo_id, [
+    const readings = [
       {
         measured_at: device.measured_at,
         temperature: device.temperature,
         humidity: device.humidity,
       },
-    ])
+    ]
+    const roomId = roomOf.get(device.id)
+    await saveHomeReadings(env.DB, device.id, readings)
+    if (roomId !== undefined) {
+      await saveReadings(env.DB, roomId, device.id, readings)
+    }
   }
 }
 
