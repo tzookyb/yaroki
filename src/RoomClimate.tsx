@@ -93,6 +93,11 @@ const METRIC_LABEL: Record<Metric, string> = {
   temperature: 'טמפרטורה',
 }
 
+// An average of several sensors isn't a measurement, so it has no decimals; a measurement has one.
+function formatNumber(value: number, whole: boolean) {
+  return whole ? Math.round(value) : Math.round(value * 10) / 10
+}
+
 function Chart({ climate }: { climate: Climate }) {
   const { current, year, resolution } = climate
   const [picked, setPicked] = useState<number | null>(null)
@@ -192,7 +197,9 @@ function Chart({ climate }: { climate: Climate }) {
       <p className="muted climate-readout" aria-live="off">
         {point ? (
           <>
-            <bdi dir="ltr">{point.temperature}°</bdi>
+            <bdi dir="ltr">
+              {formatNumber(point.temperature, climate.home_average)}°
+            </bdi>
             {point.humidity !== null && `, לחות ${Math.round(point.humidity)}%`}
             {' · '}
             <bdi dir="ltr">{fullFormat.format(point.t * 1000)}</bdi>
@@ -478,7 +485,10 @@ function RoomClimate({
         {error && <p role="alert">{error}</p>}
         {climate?.latest && (
           <p>
-            עכשיו: <bdi dir="ltr">{climate.latest.temperature}°</bdi>
+            עכשיו:{' '}
+            <bdi dir="ltr">
+              {formatNumber(climate.latest.temperature, climate.home_average)}°
+            </bdi>
             {climate.latest.humidity !== null &&
               `, לחות ${Math.round(climate.latest.humidity)}%`}
           </p>
@@ -511,7 +521,9 @@ function RoomClimate({
                     {a.temperature === null ? (
                       '—'
                     ) : (
-                      <bdi dir="ltr">{a.temperature}°</bdi>
+                      <bdi dir="ltr">
+                        {formatNumber(a.temperature, climate.home_average)}°
+                      </bdi>
                     )}
                   </td>
                   <td>
