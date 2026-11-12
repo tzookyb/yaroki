@@ -75,6 +75,9 @@ export type RoomDetails = Omit<Room, 'plant_count'> & {
 export const SKIP_REASONS = ['wet_soil', 'dormant', 'away', 'other'] as const
 export type SkipReason = (typeof SKIP_REASONS)[number]
 
+// How long a completed task stays in the task list, where it can be undone or swiped away.
+export const DONE_TASK_VISIBLE_MS = 60 * 60 * 1000
+
 export type Task = {
   type: string
   plant_id: number
@@ -84,7 +87,10 @@ export type Task = {
   room_name: string | null
   // YYYY-MM-DD in Asia/Jerusalem. For a task done today, this is the next due date.
   due_date: string
+  // On the home list: done within the last hour (DONE_TASK_VISIBLE_MS). For one plant: done today.
   done_today: boolean
+  // When it was done as an ISO UTC time, set together with `done_today`.
+  done_at: string | null
   // Set while the task is postponed by a skip. `due_date` is then the day it comes back.
   skip_reason: SkipReason | null
   // The due date after this task is done (for one done today, after `due_date`'s).
