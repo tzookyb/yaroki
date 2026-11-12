@@ -1,4 +1,9 @@
-import type { SkipReason, Task, TaskList } from '../shared/api'
+import {
+  DONE_TASK_VISIBLE_MS,
+  type SkipReason,
+  type Task,
+  type TaskList,
+} from '../shared/api'
 
 // Care tasks are computed from plant fields, not stored. A new task type adds an entry to TASK_TYPES.
 // Each plant has at most one task of each type.
@@ -14,6 +19,8 @@ type TaskPlant = {
   room_name: string | null
   water_every_days: number | null
   last_watered: string | null
+  // UTC time of the latest watering, as D1's datetime('now') writes it.
+  last_watered_at: string | null
 }
 
 type TaskType = {
@@ -22,6 +29,8 @@ type TaskType = {
   // The due date of the occurrence after one done on `doneOn`.
   nextDueDate(plant: TaskPlant, doneOn: string): string
   doneToday(plant: TaskPlant, today: string): boolean
+  // When the latest completion happened, as a UTC datetime.
+  doneAt(plant: TaskPlant): string | null
   complete(db: D1Database, plantId: number, today: string): Promise<unknown>
   undo(db: D1Database, plantId: number, today: string): Promise<unknown>
 }
@@ -43,6 +52,9 @@ const TASK_TYPES: Record<string, TaskType> = {
     },
     doneToday(plant, today) {
       return plant.last_watered === today
+    },
+    doneAt(plant) {
+      return plant.last_watered_at
     },
     complete(db, plantId, today) {
       return db.batch([
@@ -107,8 +119,12 @@ export function todayInJerusalem() {
 }
 
 // D1's datetime('now') is UTC, as YYYY-MM-DD HH:MM:SS.
+function utcTime(utcDateTime: string) {
+  return Date.parse(`${utcDateTime.replace(' ', 'T')}Z`)
+}
+
 function jerusalemDate(utcDateTime: string) {
-  return dateFormat.format(new Date(`${utcDateTime.replace(' ', 'T')}Z`))
+  return dateFormat.format(new Date(utcTime(utcDateTime)))
 }
 
 function addDays(date: string, days: number) {
@@ -116,19 +132,22 @@ function addDays(date: string, days: number) {
   return new Date(time).toISOString().slice(0, 10)
 }
 
-// Open tasks most urgent first, then tasks done today. Without `all`, only open tasks due by tomorrow.
+// Open tasks most urgent first, then tasks done within the last hour. Without `all`, only open tasks due by tomorrow.
 // `plantId` limits the list to one plant.
 export async function getTasks(
   db: D1Database,
   all: boolean,
   plantId?: number,
 ): Promise<TaskList> {
+  const now = Date.now()
   const today = todayInJerusalem()
   const tomorrow = addDays(today, 1)
   const { results: plants } = await db
     .prepare(
       `SELECT plants.id, plants.name, plants.photo_key, plants.room_id,
-              rooms.name AS room_name, plants.water_every_days, plants.last_watered
+              rooms.name AS room_name, plants.water_every_days, plants.last_watered,
+              (SELECT MAX(created_at) FROM events
+               WHERE events.plant_id = plants.id AND events.type = 'watered') AS last_watered_at
        FROM plants
        LEFT JOIN rooms ON rooms.id = plants.room_id
        WHERE ?1 IS NULL OR plants.id = ?1`,
@@ -159,7 +178,14 @@ export async function getTasks(
       if (skipped) {
         dueDate = skip.until
       }
-      const doneToday = taskType.doneToday(plant, today)
+      const doneAt = taskType.doneAt(plant)
+      const doneTime = doneAt ? utcTime(doneAt) : null
+      // The task list shows a completed task for an hour, so it can be undone or swiped away.
+      // The plant's own page lists all of its tasks and keeps showing it all day.
+      const doneToday =
+        taskType.doneToday(plant, today) &&
+        (plantId !== undefined ||
+          (doneTime !== null && now - doneTime < DONE_TASK_VISIBLE_MS))
       if (!all && !doneToday && dueDate > tomorrow) {
         continue
       }
@@ -172,6 +198,10 @@ export async function getTasks(
         room_name: plant.room_name,
         due_date: dueDate,
         done_today: doneToday,
+        done_at:
+          doneToday && doneTime !== null
+            ? new Date(doneTime).toISOString()
+            : null,
         skip_reason: skipped ? skip.reason : null,
         next_due_date: taskType.nextDueDate(
           plant,

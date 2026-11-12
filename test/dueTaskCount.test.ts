@@ -12,6 +12,7 @@ function task(due_date: string, done_today = false): Task {
     room_name: null,
     due_date,
     done_today,
+    done_at: null,
     skip_reason: null,
     next_due_date: '2026-01-08',
   }

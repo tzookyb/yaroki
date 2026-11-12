@@ -209,6 +209,23 @@ describe('task list', () => {
   })
 })
 
+describe('completed tasks in the list', () => {
+  it('keeps a task done within the hour, and drops it after', async () => {
+    const plant = await addPlant({ water_every_days: 7 })
+    await setTaskDone(env.DB, 'water', plant, true)
+
+    setNow(new Date(Date.now() + 59 * 60 * 1000).toISOString())
+    const recent = await getTasks(env.DB, false)
+    expect(recent.tasks).toMatchObject([
+      { plant_id: plant, done_today: true, done_at: expect.any(String) },
+    ])
+
+    setNow(new Date(Date.now() + 2 * 60 * 1000).toISOString())
+    const later = await getTasks(env.DB, false)
+    expect(later.tasks).toEqual([])
+  })
+})
+
 describe('skipping', () => {
   it('postpones the task by the reason, and brings it back after', async () => {
     setNow('2026-05-10T09:00:00Z')

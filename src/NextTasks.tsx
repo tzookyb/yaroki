@@ -9,7 +9,7 @@ import {
   type Task,
   type TaskList,
 } from './api'
-import { SKIP_REASONS } from '../shared/api'
+import { DONE_TASK_VISIBLE_MS, SKIP_REASONS } from '../shared/api'
 import { dueTaskCount } from '../shared/taskBadge'
 import { setAppBadge } from './appBadge'
 import { ROOMS_CHANGED } from './ManageRooms'
@@ -32,7 +32,7 @@ const GROUP_LABELS = {
   today: 'היום',
   tomorrow: 'מחר',
   later: 'בהמשך',
-  done: 'בוצע היום',
+  done: 'בוצע לאחרונה',
 }
 
 type Group = keyof typeof GROUP_LABELS
@@ -86,6 +86,41 @@ function plantHref(task: Task) {
 }
 
 const DRAWER_MS = 200
+const SWIPE_HIDE_PX = 80
+const SWIPE_MOVED_PX = 10
+const HIDDEN_KEY = 'yaroki.hiddenDoneTasks'
+
+// A done task swiped away stays hidden on this device. The key includes the completion time,
+// so doing the task again later shows it again.
+function doneId(task: Task) {
+  return `${taskKey(task)}@${task.done_at}`
+}
+
+function readHidden(): string[] {
+  try {
+    const value = JSON.parse(localStorage.getItem(HIDDEN_KEY) ?? '[]')
+    return Array.isArray(value) ? value : []
+  } catch {
+    return []
+  }
+}
+
+function useHiddenDone() {
+  const [hidden, setHidden] = useState(readHidden)
+  const hide = (task: Task) => {
+    const next = [...hidden, doneId(task)]
+    setHidden(next)
+    try {
+      localStorage.setItem(HIDDEN_KEY, JSON.stringify(next.slice(-100)))
+    } catch {
+      // Hiding then lasts only until the page reloads.
+    }
+  }
+  return {
+    isHidden: (task: Task) => hidden.includes(doneId(task)),
+    hide,
+  }
+}
 
 type TaskGroupsProps = {
   list: TaskList
@@ -96,8 +131,14 @@ type TaskGroupsProps = {
 
 function TaskGroups({ list, busy, onDone, onSkip }: TaskGroupsProps) {
   const [choosing, setChoosing] = useState<string | null>(null)
+  const [swipe, setSwipe] = useState<{ key: string; dx: number } | null>(null)
+  const swipeStart = useRef<{ x: number; moved: boolean } | null>(null)
+  const { isHidden, hide } = useHiddenDone()
   const groups = new Map<Group, Task[]>()
   for (const task of list.tasks) {
+    if (task.done_today && isHidden(task)) {
+      continue
+    }
     const group = groupOf(task, list.today)
     groups.set(group, [...(groups.get(group) ?? []), task])
   }
@@ -116,7 +157,52 @@ function TaskGroups({ list, busy, onDone, onSkip }: TaskGroupsProps) {
               <li
                 key={key}
                 className={task.done_today ? 'done' : ''}
+                style={
+                  swipe?.key === key
+                    ? {
+                        transform: `translateX(${swipe.dx}px)`,
+                        opacity:
+                          0.55 * (1 - Math.min(Math.abs(swipe.dx) / 200, 0.6)),
+                        transition: 'none',
+                      }
+                    : undefined
+                }
+                onPointerDown={(event) => {
+                  if (task.done_today) {
+                    swipeStart.current = { x: event.clientX, moved: false }
+                  }
+                }}
+                onPointerMove={(event) => {
+                  const start = swipeStart.current
+                  if (!start || !task.done_today) {
+                    return
+                  }
+                  const dx = event.clientX - start.x
+                  if (Math.abs(dx) > SWIPE_MOVED_PX) {
+                    start.moved = true
+                    event.currentTarget.setPointerCapture(event.pointerId)
+                    setSwipe({ key, dx })
+                  }
+                }}
+                onPointerUp={() => {
+                  if (
+                    swipe?.key === key &&
+                    Math.abs(swipe.dx) >= SWIPE_HIDE_PX
+                  ) {
+                    hide(task)
+                  }
+                  setSwipe(null)
+                  // Cleared after the click that follows a drag has been ignored.
+                  setTimeout(() => (swipeStart.current = null))
+                }}
+                onPointerCancel={() => {
+                  swipeStart.current = null
+                  setSwipe(null)
+                }}
                 onClick={(event) => {
+                  if (swipeStart.current?.moved) {
+                    return
+                  }
                   // The link inside covers keyboard use; the rest of the card is a bigger tap target.
                   if (!(event.target as Element).closest('button, a')) {
                     window.location.hash = plantHref(task)
@@ -230,6 +316,21 @@ function NextTasks() {
       ]).catch(() => setError('לא הצלחנו לטעון את המשימות.')),
     [drawerOpen],
   )
+
+  // A done task leaves the list an hour after it was done, even if the app stays open.
+  useEffect(() => {
+    const expiries = (list?.tasks ?? [])
+      .filter((task) => task.done_at)
+      .map((task) => Date.parse(task.done_at!) + DONE_TASK_VISIBLE_MS)
+    if (expiries.length === 0) {
+      return
+    }
+    const timer = setTimeout(
+      load,
+      Math.max(Math.min(...expiries) - Date.now(), 0) + 1000,
+    )
+    return () => clearTimeout(timer)
+  }, [list, load])
 
   const badgeCount = list ? dueTaskCount(list) : undefined
 

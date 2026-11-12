@@ -918,6 +918,11 @@ form.room-profile {
 
 .next-tasks li.done {
   opacity: 0.55;
+  /* Horizontal drags swipe the card away instead of scrolling the page. */
+  touch-action: pan-y;
+  transition:
+    transform 0.2s,
+    opacity 0.2s;
 }
 
 .next-tasks li.done img {
