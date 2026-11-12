@@ -211,16 +211,23 @@ describe('task list', () => {
 
 describe('completed tasks in the list', () => {
   it('keeps a task done within the hour, and drops it after', async () => {
+    setNow('2026-05-10T09:00:00Z')
     const plant = await addPlant({ water_every_days: 7 })
     await setTaskDone(env.DB, 'water', plant, true)
+    // D1 stamps events with the real clock, so pin it to the faked one.
+    await env.DB.prepare(
+      "UPDATE events SET created_at = '2026-05-10 09:00:00' WHERE plant_id = ?",
+    )
+      .bind(plant)
+      .run()
 
-    setNow(new Date(Date.now() + 59 * 60 * 1000).toISOString())
+    setNow('2026-05-10T09:59:00Z')
     const recent = await getTasks(env.DB, false)
     expect(recent.tasks).toMatchObject([
       { plant_id: plant, done_today: true, done_at: expect.any(String) },
     ])
 
-    setNow(new Date(Date.now() + 2 * 60 * 1000).toISOString())
+    setNow('2026-05-10T10:01:00Z')
     const later = await getTasks(env.DB, false)
     expect(later.tasks).toEqual([])
   })
