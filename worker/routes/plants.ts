@@ -80,6 +80,16 @@ export const plantRoutes = createApp()
       : c.json({ error: result.error }, result.status)
   })
 
+  // The owner has checked the species against the reference photos, so re-identifying is no longer offered.
+  .post('/:id/confirm', validate('param', idParam), async (c) => {
+    const plant = await c.env.DB.prepare(
+      'UPDATE plants SET identification_confirmed = 1 WHERE id = ? AND species IS NOT NULL RETURNING *',
+    )
+      .bind(c.req.valid('param').id)
+      .first<Plant>()
+    return plant ? c.json(plant) : c.json({ error: 'Plant not found' }, 404)
+  })
+
   // Called by the plant page for plants that miss data added after they were identified.
   .post('/:id/enrich', validate('param', idParam), async (c) => {
     const { id } = c.req.valid('param')

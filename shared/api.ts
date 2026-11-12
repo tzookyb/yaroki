@@ -57,6 +57,9 @@ export type Plant = {
   temp_max: number | null
   description: string | null
   reference_image_url: string | null
+  // JSON array of URLs; empty for plants identified before there were several.
+  reference_images: string
+  identification_confirmed: number
   enriched_version: number
   care_notes: string | null
 }
