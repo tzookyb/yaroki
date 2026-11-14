@@ -78,6 +78,11 @@ export type RoomDetails = Omit<Room, 'plant_count'> & {
 export const SKIP_REASONS = ['wet_soil', 'dormant', 'away', 'other'] as const
 export type SkipReason = (typeof SKIP_REASONS)[number]
 
+// Plants that need humid air get a misting task while their room's humidity is below this percent,
+// and again every MIST_EVERY_DAYS days until the air is no longer dry.
+export const MIST_DRY_BELOW = 50
+export const MIST_EVERY_DAYS = 2
+
 // How long a completed task stays in the task list, where it can be undone or swiped away.
 export const DONE_TASK_VISIBLE_MS = 60 * 60 * 1000
 
