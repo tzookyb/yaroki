@@ -1,5 +1,7 @@
 import {
   DONE_TASK_VISIBLE_MS,
+  MIST_DRY_BELOW,
+  MIST_EVERY_DAYS,
   type SkipReason,
   type Task,
   type TaskList,
@@ -21,6 +23,11 @@ type TaskPlant = {
   last_watered: string | null
   // UTC time of the latest watering, as D1's datetime('now') writes it.
   last_watered_at: string | null
+  humidity_needs: string | null
+  room_location_type: string | null
+  // Newest humidity reading of the room from the last 3 days.
+  room_humidity: number | null
+  last_misted_at: string | null
 }
 
 type TaskType = {
@@ -29,6 +36,8 @@ type TaskType = {
   // The due date of the occurrence after one done on `doneOn`.
   nextDueDate(plant: TaskPlant, doneOn: string): string
   doneToday(plant: TaskPlant, today: string): boolean
+  // The date of the latest completion; a skip only counts until the plant is cared for after it.
+  lastDoneOn(plant: TaskPlant): string | null
   // When the latest completion happened, as a UTC datetime.
   doneAt(plant: TaskPlant): string | null
   complete(db: D1Database, plantId: number, today: string): Promise<unknown>
@@ -52,6 +61,9 @@ const TASK_TYPES: Record<string, TaskType> = {
     },
     doneToday(plant, today) {
       return plant.last_watered === today
+    },
+    lastDoneOn(plant) {
+      return plant.last_watered
     },
     doneAt(plant) {
       return plant.last_watered_at
@@ -90,6 +102,66 @@ const TASK_TYPES: Record<string, TaskType> = {
           db.prepare('DELETE FROM events WHERE id = ?').bind(event.id),
         ),
       ])
+    },
+  },
+  // Only while the air in an indoor room is measured as dry and the plant likes humid air, so the task
+  // appears and goes with the readings. A done misting counts for today even if the air has recovered.
+  mist: {
+    dueDate(plant, today) {
+      const lastDone = plant.last_misted_at
+        ? jerusalemDate(plant.last_misted_at)
+        : null
+      if (lastDone === today) {
+        return addDays(today, MIST_EVERY_DAYS)
+      }
+      const dry =
+        plant.humidity_needs === 'humid' &&
+        plant.room_location_type === 'indoor' &&
+        plant.room_humidity !== null &&
+        plant.room_humidity < MIST_DRY_BELOW
+      if (!dry) {
+        return null
+      }
+      // Dryness is a condition, not a schedule, so a task past its interval is simply due now.
+      const next = lastDone ? addDays(lastDone, MIST_EVERY_DAYS) : today
+      return next > today ? next : today
+    },
+    nextDueDate(_plant, doneOn) {
+      return addDays(doneOn, MIST_EVERY_DAYS)
+    },
+    doneToday(plant, today) {
+      return plant.last_misted_at
+        ? jerusalemDate(plant.last_misted_at) === today
+        : false
+    },
+    lastDoneOn(plant) {
+      return plant.last_misted_at ? jerusalemDate(plant.last_misted_at) : null
+    },
+    doneAt(plant) {
+      return plant.last_misted_at
+    },
+    complete(db, plantId) {
+      return db
+        .prepare("INSERT INTO events (plant_id, type) VALUES (?, 'misted')")
+        .bind(plantId)
+        .run()
+    },
+    async undo(db, plantId, today) {
+      const { results } = await db
+        .prepare(
+          `SELECT id, created_at FROM events
+           WHERE plant_id = ? AND type = 'misted'
+           ORDER BY id DESC LIMIT 10`,
+        )
+        .bind(plantId)
+        .all<{ id: number; created_at: string }>()
+      return db.batch(
+        results
+          .filter((event) => jerusalemDate(event.created_at) === today)
+          .map((event) =>
+            db.prepare('DELETE FROM events WHERE id = ?').bind(event.id),
+          ),
+      )
     },
   },
 }
@@ -132,6 +204,29 @@ function addDays(date: string, days: number) {
   return new Date(time).toISOString().slice(0, 10)
 }
 
+// The plants with everything the task types read. `plantId` limits it to one plant.
+async function loadTaskPlants(db: D1Database, plantId?: number) {
+  const { results } = await db
+    .prepare(
+      `SELECT plants.id, plants.name, plants.photo_key, plants.room_id,
+              rooms.name AS room_name, plants.water_every_days, plants.last_watered,
+              (SELECT MAX(created_at) FROM events
+               WHERE events.plant_id = plants.id AND events.type = 'watered') AS last_watered_at,
+              plants.humidity_needs, rooms.location_type AS room_location_type,
+              (SELECT humidity FROM room_readings
+               WHERE room_readings.room_id = plants.room_id AND measured_at >= date('now', '-3 days')
+               ORDER BY measured_at DESC LIMIT 1) AS room_humidity,
+              (SELECT MAX(created_at) FROM events
+               WHERE events.plant_id = plants.id AND events.type = 'misted') AS last_misted_at
+       FROM plants
+       LEFT JOIN rooms ON rooms.id = plants.room_id
+       WHERE ?1 IS NULL OR plants.id = ?1`,
+    )
+    .bind(plantId ?? null)
+    .all<TaskPlant>()
+  return results
+}
+
 // Open tasks most urgent first, then tasks done within the last hour. Without `all`, only open tasks due by tomorrow.
 // `plantId` limits the list to one plant.
 export async function getTasks(
@@ -142,18 +237,7 @@ export async function getTasks(
   const now = Date.now()
   const today = todayInJerusalem()
   const tomorrow = addDays(today, 1)
-  const { results: plants } = await db
-    .prepare(
-      `SELECT plants.id, plants.name, plants.photo_key, plants.room_id,
-              rooms.name AS room_name, plants.water_every_days, plants.last_watered,
-              (SELECT MAX(created_at) FROM events
-               WHERE events.plant_id = plants.id AND events.type = 'watered') AS last_watered_at
-       FROM plants
-       LEFT JOIN rooms ON rooms.id = plants.room_id
-       WHERE ?1 IS NULL OR plants.id = ?1`,
-    )
-    .bind(plantId ?? null)
-    .all<TaskPlant>()
+  const plants = await loadTaskPlants(db, plantId)
 
   const { results: skipRows } = await db
     .prepare('SELECT plant_id, type, reason, skipped_on, until FROM task_skips')
@@ -174,7 +258,8 @@ export async function getTasks(
       const skipped =
         skip !== undefined &&
         skip.until > dueDate &&
-        (!plant.last_watered || skip.skipped_on > plant.last_watered)
+        (!taskType.lastDoneOn(plant) ||
+          skip.skipped_on > taskType.lastDoneOn(plant)!)
       if (skipped) {
         dueDate = skip.until
       }
@@ -232,10 +317,7 @@ export async function setTaskDone(
   if (!taskType) {
     return false
   }
-  const plant = await db
-    .prepare('SELECT * FROM plants WHERE id = ?')
-    .bind(plantId)
-    .first<TaskPlant>()
+  const [plant] = await loadTaskPlants(db, plantId)
   if (!plant) {
     return false
   }
@@ -266,10 +348,7 @@ export async function setTaskSkipped(
   if (!taskType) {
     return false
   }
-  const plant = await db
-    .prepare('SELECT * FROM plants WHERE id = ?')
-    .bind(plantId)
-    .first<TaskPlant>()
+  const [plant] = await loadTaskPlants(db, plantId)
   const today = todayInJerusalem()
   if (!plant || taskType.doneToday(plant, today)) {
     return false
