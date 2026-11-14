@@ -18,6 +18,7 @@ const DAY_MS = 24 * 60 * 60 * 1000
 
 const TASK_LABELS: Record<string, { action: string; done: string }> = {
   water: { action: 'להשקות', done: 'השקיתי ✓' },
+  mist: { action: 'לרסס', done: 'ריססתי ✓' },
 }
 
 const SKIP_LABELS: Record<SkipReason, string> = {

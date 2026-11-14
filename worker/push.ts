@@ -150,9 +150,13 @@ export async function sendDueReminders(env: Env) {
   if (!vapidConfigured(env)) {
     return
   }
-  if (dueTaskCount(await getTasks(env.DB, false)) === 0) {
+  if (dueTaskCount(await getTasks(env.DB, false), 'water') === 0) {
     return
   }
+  await pushToAll(env)
+}
+
+async function pushToAll(env: Env) {
   const { results } = await env.DB.prepare(
     'SELECT endpoint FROM push_subscriptions',
   ).all<{ endpoint: string }>()
@@ -161,5 +165,47 @@ export async function sendDueReminders(env: Env) {
       env,
       results.map((row) => row.endpoint),
     )
+  }
+}
+
+// Runs after each climate collection. Pushes when a misting task is due that no push has announced yet:
+// the first dry reading, and again each time the task comes back after being done. Once the air is no
+// longer dry the memory of it is dropped, so the next dry spell announces itself too.
+export async function sendMistingAlerts(env: Env) {
+  const { today, tasks } = await getTasks(env.DB, true)
+  const due = tasks.filter(
+    (task) =>
+      task.type === 'mist' && !task.done_today && task.due_date <= today,
+  )
+  const { results: alerted } = await env.DB.prepare(
+    'SELECT plant_id, due_date FROM misting_alerts',
+  ).all<{ plant_id: number; due_date: string }>()
+  const announced = new Map(alerted.map((row) => [row.plant_id, row.due_date]))
+  const fresh = due.filter(
+    (task) => announced.get(task.plant_id) !== task.due_date,
+  )
+
+  const stillMistTask = new Set(
+    tasks.filter((task) => task.type === 'mist').map((task) => task.plant_id),
+  )
+  const gone = alerted.filter((row) => !stillMistTask.has(row.plant_id))
+  const statements = [
+    ...gone.map((row) =>
+      env.DB.prepare('DELETE FROM misting_alerts WHERE plant_id = ?').bind(
+        row.plant_id,
+      ),
+    ),
+    ...fresh.map((task) =>
+      env.DB.prepare(
+        `INSERT INTO misting_alerts (plant_id, due_date) VALUES (?, ?)
+         ON CONFLICT (plant_id) DO UPDATE SET due_date = excluded.due_date`,
+      ).bind(task.plant_id, task.due_date),
+    ),
+  ]
+  if (statements.length > 0) {
+    await env.DB.batch(statements)
+  }
+  if (fresh.length > 0 && vapidConfigured(env)) {
+    await pushToAll(env)
   }
 }

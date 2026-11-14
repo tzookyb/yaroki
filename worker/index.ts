@@ -15,6 +15,7 @@ import {
   sendReminderIfTime,
 } from './reminderTime'
 import { collectReadings } from './readings'
+import { sendMistingAlerts } from './push'
 import { SENTRY_DATA_COLLECTION, scrubBreadcrumb } from '../shared/sentry'
 
 // Runs every hour so the reminder can go out in the hour the owner usually waters.
@@ -80,6 +81,10 @@ const handler = {
         break
       case CLIMATE_READINGS:
         await collectReadings(env)
+        await sendMistingAlerts(env).catch((error) => {
+          console.error('Misting alerts failed', error)
+          Sentry.captureException(error)
+        })
         break
     }
   },

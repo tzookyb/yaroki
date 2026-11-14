@@ -1,7 +1,13 @@
 // Imported by the generated service worker (see `importScripts` in vite.config.ts).
 // The push carries no payload, so the open tasks are read from the API when it arrives.
 const TITLE = 'ירוקי'
-const FALLBACK_BODY = 'יש צמחים שמחכים להשקיה'
+const FALLBACK_BODY = 'יש צמחים שמחכים לטיפול'
+
+function plantsText(tasks) {
+  return tasks.length === 1
+    ? (tasks[0].plant_name ?? 'צמח')
+    : `${tasks.length} צמחים`
+}
 
 async function reminderBody() {
   try {
@@ -10,17 +16,19 @@ async function reminderBody() {
       return FALLBACK_BODY
     }
     const { today, tasks } = await response.json()
-    const due = tasks.filter(
-      (task) =>
-        task.type === 'water' && !task.done_today && task.due_date <= today,
-    )
-    if (due.length === 0) {
-      return FALLBACK_BODY
+    const due = (type) =>
+      tasks.filter(
+        (task) =>
+          task.type === type && !task.done_today && task.due_date <= today,
+      )
+    const lines = []
+    if (due('water').length > 0) {
+      lines.push(`הגיע הזמן להשקות: ${plantsText(due('water'))}`)
     }
-    if (due.length === 1) {
-      return `הגיע הזמן להשקות: ${due[0].plant_name ?? 'צמח'}`
+    if (due('mist').length > 0) {
+      lines.push(`האוויר יבש, כדאי לרסס: ${plantsText(due('mist'))}`)
     }
-    return `הגיע הזמן להשקות ${due.length} צמחים`
+    return lines.length > 0 ? lines.join('\n') : FALLBACK_BODY
   } catch {
     return FALLBACK_BODY
   }
