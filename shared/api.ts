@@ -77,6 +77,9 @@ export type RoomDetails = Omit<Room, 'plant_count'> & {
 // Why a task was skipped. How long each one postpones the task is decided in worker/tasks.ts.
 export const SKIP_REASONS = ['wet_soil', 'dormant', 'away', 'other'] as const
 export type SkipReason = (typeof SKIP_REASONS)[number]
+// The owner only chooses between these. `other` means "didn't get to it"; the other two are kept for skips
+// saved before the choice was reduced.
+export const OFFERED_SKIP_REASONS = ['wet_soil', 'other'] as const
 
 // Plants that need humid air get a misting task while their room's humidity is below this percent,
 // and again every MIST_EVERY_DAYS days until the air is no longer dry.

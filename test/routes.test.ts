@@ -498,8 +498,14 @@ describe('tasks API', () => {
     expect((await api(path, { method: 'DELETE' }, session)).status).toBe(204)
   })
 
-  it('refuses an unknown skip reason', async () => {
+  it('refuses an unknown skip reason, and the ones no longer offered', async () => {
     const plant = await addPlant({ water_every_days: 3 })
+    const retired = await api(
+      `/plants/${plant}/tasks/water/skip`,
+      json({ reason: 'dormant' }),
+      session,
+    )
+    expect(retired.status).toBe(400)
     const response = await api(
       `/plants/${plant}/tasks/water/skip`,
       json({ reason: 'bored' }),

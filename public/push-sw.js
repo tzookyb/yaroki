@@ -41,6 +41,7 @@ self.addEventListener('push', (event) => {
       self.registration.showNotification(TITLE, {
         body,
         icon: '/icon-192.png',
+        badge: '/badge-96.png',
         lang: 'he',
         dir: 'rtl',
         tag: 'watering',
