@@ -70,6 +70,17 @@ export type PlantDetails = Plant & {
   tasks: TaskList
 }
 
+export type HistoryEntry =
+  | { kind: 'task_done'; type: string; date: string }
+  | { kind: 'task_skipped'; type: string; date: string; reason: SkipReason }
+  | {
+      kind: 'interval_changed'
+      date: string
+      from_days: number
+      to_days: number
+      cause: string
+    }
+
 export type RoomDetails = Omit<Room, 'plant_count'> & {
   plants: Plant[]
 }

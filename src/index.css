@@ -1098,3 +1098,24 @@ form.room-profile {
   flex-wrap: wrap;
   gap: 0.5rem;
 }
+
+.plant-history {
+  margin-top: 1rem;
+}
+
+.plant-history .history-body {
+  padding: 0.25rem 1.25rem 1.25rem;
+}
+
+.history-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.history-list li {
+  display: grid;
+  gap: 0.15rem;
+}
