@@ -9,7 +9,7 @@ import {
   type Task,
   type TaskList,
 } from './api'
-import { DONE_TASK_VISIBLE_MS, SKIP_REASONS } from '../shared/api'
+import { DONE_TASK_VISIBLE_MS, OFFERED_SKIP_REASONS } from '../shared/api'
 import { dueTaskCount } from '../shared/taskBadge'
 import { setAppBadge } from './appBadge'
 import { ROOMS_CHANGED } from './ManageRooms'
@@ -25,7 +25,7 @@ const SKIP_LABELS: Record<SkipReason, string> = {
   wet_soil: 'האדמה עדיין רטובה',
   dormant: 'הצמח במנוחה',
   away: 'לא הייתי בבית',
-  other: 'סיבה אחרת',
+  other: 'לא הספקתי',
 }
 
 const GROUP_LABELS = {
@@ -276,7 +276,7 @@ function TaskGroups({ list, busy, onDone, onSkip }: TaskGroupsProps) {
                     role="group"
                     aria-label="סיבת הדילוג"
                   >
-                    {SKIP_REASONS.map((reason) => (
+                    {OFFERED_SKIP_REASONS.map((reason) => (
                       <button
                         key={reason}
                         type="button"

@@ -75,9 +75,13 @@ type Climate = { t: number | null; h: number | null }
 // True when the last week is clearly warmer or drier than the month before it.
 export function dryingFaster(recent: Climate, baseline: Climate) {
   const warmer =
-    recent.t !== null && baseline.t !== null && recent.t - baseline.t >= WARMER_BY
+    recent.t !== null &&
+    baseline.t !== null &&
+    recent.t - baseline.t >= WARMER_BY
   const drier =
-    recent.h !== null && baseline.h !== null && baseline.h - recent.h >= DRIER_BY
+    recent.h !== null &&
+    baseline.h !== null &&
+    baseline.h - recent.h >= DRIER_BY
   return warmer || drier
 }
 
@@ -99,8 +103,10 @@ async function climateOf(
   const recentFrom = addDays(today, -RECENT_DAYS)
   const baselineFrom = addDays(today, -RECENT_DAYS - BASELINE_DAYS)
   // A room without readings of its own is judged by the house sensors.
-  const sources = roomId === null ? [] : [['room_readings', roomId] as const]
-  sources.push(['home_readings', null] as never)
+  const sources: [string, number | null][] = [['home_readings', null]]
+  if (roomId !== null) {
+    sources.unshift(['room_readings', roomId])
+  }
   for (const [table, id] of sources) {
     const row = await db
       .prepare(
@@ -110,8 +116,17 @@ async function climateOf(
                 AVG(CASE WHEN measured_at < ?1 THEN humidity END) AS bh
          FROM ${table} WHERE measured_at >= ?2 ${id === null ? '' : 'AND room_id = ?3'}`,
       )
-      .bind(...(id === null ? [recentFrom, baselineFrom] : [recentFrom, baselineFrom, id]))
-      .first<{ rt: number | null; rh: number | null; bt: number | null; bh: number | null }>()
+      .bind(
+        ...(id === null
+          ? [recentFrom, baselineFrom]
+          : [recentFrom, baselineFrom, id]),
+      )
+      .first<{
+        rt: number | null
+        rh: number | null
+        bt: number | null
+        bh: number | null
+      }>()
     if (row && row.rt !== null && row.bt !== null) {
       return {
         recent: { t: row.rt, h: row.rh },
@@ -205,9 +220,23 @@ export async function adjustWateringIntervals(db: D1Database) {
     if (plant.water_probe_from !== null && lastChange) {
       // Any wet-soil skip since the probe began means it was too early.
       if (await skipCount(db, plant.id, lastChange, true)) {
-        await record(db, plant, today, plant.water_probe_from, 'probe_failed', null)
+        await record(
+          db,
+          plant,
+          today,
+          plant.water_probe_from,
+          'probe_failed',
+          null,
+        )
       } else if ((await wateredDates(db, plant.id, lastChange)).length > 0) {
-        await record(db, plant, today, plant.water_every_days, 'probe_accepted', null)
+        await record(
+          db,
+          plant,
+          today,
+          plant.water_every_days,
+          'probe_accepted',
+          null,
+        )
       }
       continue
     }
@@ -215,7 +244,8 @@ export async function adjustWateringIntervals(db: D1Database) {
     if (lastChange && lastChange > addDays(today, -COOLDOWN_DAYS)) {
       continue
     }
-    const since = lastChange && lastChange > windowStart ? lastChange : windowStart
+    const since =
+      lastChange && lastChange > windowStart ? lastChange : windowStart
     const wateredOn = await wateredDates(db, plant.id, since)
     const change = decideInterval({
       current: plant.water_every_days,
@@ -229,13 +259,21 @@ export async function adjustWateringIntervals(db: D1Database) {
     }
 
     const quiet = !lastChange || lastChange <= addDays(today, -PROBE_QUIET_DAYS)
-    const probe = probeInterval(plant.water_every_days, plant.ai_water_every_days)
+    const probe = probeInterval(
+      plant.water_every_days,
+      plant.ai_water_every_days,
+    )
     if (
       !quiet ||
       probe === null ||
-      (await skipCount(db, plant.id, addDays(today, -PROBE_QUIET_DAYS), false)) ||
-      (await wateredDates(db, plant.id, addDays(today, -PROBE_QUIET_DAYS))).length <
-        PROBE_MIN_WATERINGS
+      (await skipCount(
+        db,
+        plant.id,
+        addDays(today, -PROBE_QUIET_DAYS),
+        false,
+      )) ||
+      (await wateredDates(db, plant.id, addDays(today, -PROBE_QUIET_DAYS)))
+        .length < PROBE_MIN_WATERINGS
     ) {
       continue
     }

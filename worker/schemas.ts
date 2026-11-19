@@ -6,7 +6,7 @@ import {
   ROOM_NAME_MAX_LENGTH,
   ROOM_TEMP_MAX,
   ROOM_TEMP_MIN,
-  SKIP_REASONS,
+  OFFERED_SKIP_REASONS,
   WINDOW_DIRECTIONS,
 } from '../shared/api'
 import { isPushServiceUrl } from './push'
@@ -73,4 +73,4 @@ export const pushSubscriptionBody = z.object({
   }),
 })
 
-export const skipBody = z.object({ reason: z.enum(SKIP_REASONS) })
+export const skipBody = z.object({ reason: z.enum(OFFERED_SKIP_REASONS) })

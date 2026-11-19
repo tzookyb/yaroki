@@ -4,8 +4,10 @@ import { setTaskSkipped } from '../worker/tasks'
 import {
   adjustWateringIntervals,
   decideInterval,
+  dryingFaster,
+  probeInterval,
 } from '../worker/wateringInterval'
-import { addPlant, addWatering } from './helpers'
+import { addPlant, addRoom, addWatering } from './helpers'
 
 afterEach(() => {
   vi.useRealTimers()
@@ -160,5 +162,158 @@ describe('skip log', () => {
 
     await setTaskSkipped(env.DB, 'water', plantId, null)
     expect(await count()).toBe(1)
+  })
+})
+
+describe('probing', () => {
+  async function steadyPlant(roomId: number | null = null) {
+    const plantId = await addPlant({ water_every_days: 10, room_id: roomId })
+    for (const day of [
+      '2026-05-25',
+      '2026-06-04',
+      '2026-06-14',
+      '2026-06-24',
+    ]) {
+      await addWatering(plantId, `${day} 08:00:00`)
+    }
+    return plantId
+  }
+
+  // A cool, humid month and then a warm, dry week.
+  async function warmDryWeek(roomId: number) {
+    const rows: [string, number, number][] = [
+      ['2026-06-01 12:00:00', 22, 55],
+      ['2026-06-15 12:00:00', 22, 55],
+      ['2026-06-27 12:00:00', 26, 40],
+    ]
+    for (const [at, t, h] of rows) {
+      await env.DB.prepare(
+        "INSERT INTO room_readings (room_id, source_id, measured_at, temperature, humidity) VALUES (?, 's', ?, ?, ?)",
+      )
+        .bind(roomId, at, t, h)
+        .run()
+    }
+  }
+
+  const change = () =>
+    env.DB.prepare(
+      'SELECT from_days, to_days, cause FROM water_interval_changes ORDER BY id DESC',
+    ).first()
+
+  it('detects a warmer or drier week', () => {
+    expect(dryingFaster({ t: 26, h: 50 }, { t: 22, h: 50 })).toBe(true)
+    expect(dryingFaster({ t: 22, h: 40 }, { t: 22, h: 50 })).toBe(true)
+    expect(dryingFaster({ t: 23, h: 47 }, { t: 22, h: 50 })).toBe(false)
+    expect(dryingFaster({ t: null, h: null }, { t: 22, h: 50 })).toBe(false)
+  })
+
+  it('leaves no probe room for short intervals', () => {
+    expect(probeInterval(10, 10)).toBe(9)
+    expect(probeInterval(5, 10)).toBeNull()
+    expect(probeInterval(1, 1)).toBeNull()
+  })
+
+  it('shortens a steady plant when its room turns warm and dry', async () => {
+    setNow()
+    const room = await addRoom()
+    const plantId = await steadyPlant(room)
+    await warmDryWeek(room)
+    await adjustWateringIntervals(env.DB)
+    expect(await interval(plantId)).toBe(9)
+    expect(await change()).toEqual({
+      from_days: 10,
+      to_days: 9,
+      cause: 'probe',
+    })
+  })
+
+  it('does not probe without a climate change, without data, or after a recent skip', async () => {
+    setNow()
+    const room = await addRoom()
+    const calm = await steadyPlant(room)
+    await env.DB.prepare(
+      "INSERT INTO room_readings (room_id, source_id, measured_at, temperature, humidity) VALUES (?, 's', '2026-06-26 12:00:00', 22, 55), (?, 's', '2026-06-10 12:00:00', 22, 55)",
+    )
+      .bind(room, room)
+      .run()
+    const noData = await steadyPlant(await addRoom('חדר'))
+    await adjustWateringIntervals(env.DB)
+    expect(await interval(calm)).toBe(10)
+    expect(await interval(noData)).toBe(10)
+
+    await warmDryWeek(room)
+    await logSkip(calm, '2026-06-20', 'other')
+    await adjustWateringIntervals(env.DB)
+    expect(await interval(calm)).toBe(10)
+  })
+
+  it('uses the house sensors when the room has no readings', async () => {
+    setNow()
+    const plantId = await steadyPlant(null)
+    for (const [at, t] of [
+      ['2026-06-10 12:00:00', 22],
+      ['2026-06-28 12:00:00', 26],
+    ] as const) {
+      await env.DB.prepare(
+        "INSERT INTO home_readings (source_id, measured_at, temperature, humidity) VALUES ('d', ?, ?, 50)",
+      )
+        .bind(at, t)
+        .run()
+    }
+    await adjustWateringIntervals(env.DB)
+    expect(await interval(plantId)).toBe(9)
+  })
+
+  async function probed() {
+    setNow()
+    const room = await addRoom()
+    const plantId = await steadyPlant(room)
+    await warmDryWeek(room)
+    await adjustWateringIntervals(env.DB)
+    return plantId
+  }
+
+  it('undoes the probe after a wet-soil skip and does not probe again soon', async () => {
+    const plantId = await probed()
+    setNow('2026-07-02T09:00:00Z')
+    await logSkip(plantId, '2026-07-01')
+    await adjustWateringIntervals(env.DB)
+    expect(await interval(plantId)).toBe(10)
+    expect(await change()).toEqual({
+      from_days: 9,
+      to_days: 10,
+      cause: 'probe_failed',
+    })
+    await adjustWateringIntervals(env.DB)
+    expect(await interval(plantId)).toBe(10)
+  })
+
+  it('keeps the shorter interval once the plant was watered on the early date', async () => {
+    const plantId = await probed()
+    setNow('2026-07-04T09:00:00Z')
+    await addWatering(plantId, '2026-07-03 08:00:00')
+    await adjustWateringIntervals(env.DB)
+    expect(await interval(plantId)).toBe(9)
+    expect(await change()).toEqual({
+      from_days: 9,
+      to_days: 9,
+      cause: 'probe_accepted',
+    })
+    const probe = await env.DB.prepare(
+      'SELECT water_probe_from FROM plants',
+    ).first('water_probe_from')
+    expect(probe).toBeNull()
+  })
+
+  it('waits while the probe has no answer yet', async () => {
+    const plantId = await probed()
+    setNow('2026-07-02T09:00:00Z')
+    await adjustWateringIntervals(env.DB)
+    expect(await interval(plantId)).toBe(9)
+    expect(
+      await env.DB.prepare(
+        'SELECT COUNT(*) AS c FROM water_interval_changes',
+      ).first('c'),
+    ).toBe(1)
   })
 })
