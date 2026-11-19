@@ -195,11 +195,11 @@ function utcTime(utcDateTime: string) {
   return Date.parse(`${utcDateTime.replace(' ', 'T')}Z`)
 }
 
-function jerusalemDate(utcDateTime: string) {
+export function jerusalemDate(utcDateTime: string) {
   return dateFormat.format(new Date(utcTime(utcDateTime)))
 }
 
-function addDays(date: string, days: number) {
+export function addDays(date: string, days: number) {
   const time = Date.parse(`${date}T00:00:00Z`) + days * DAY_MS
   return new Date(time).toISOString().slice(0, 10)
 }
@@ -356,11 +356,24 @@ export async function setTaskSkipped(
   const remove = db
     .prepare('DELETE FROM task_skips WHERE plant_id = ? AND type = ?')
     .bind(plantId, type)
+  // A cancelled skip is a mistake, so it must not count as evidence either.
+  const unlog = db
+    .prepare(
+      `DELETE FROM task_skip_log WHERE plant_id = ? AND type = ?
+       AND skipped_on = (SELECT skipped_on FROM task_skips WHERE plant_id = ? AND type = ?)`,
+    )
+    .bind(plantId, type, plantId, type)
   if (reason === null) {
-    await remove.run()
+    await db.batch([unlog, remove])
   } else {
     await db.batch([
       remove,
+      db
+        .prepare(
+          `INSERT OR REPLACE INTO task_skip_log (plant_id, type, reason, skipped_on)
+           VALUES (?, ?, ?, ?)`,
+        )
+        .bind(plantId, type, reason, today),
       db
         .prepare(
           'INSERT INTO task_skips (plant_id, type, reason, skipped_on, until) VALUES (?, ?, ?, ?, ?)',

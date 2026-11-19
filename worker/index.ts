@@ -16,6 +16,7 @@ import {
 } from './reminderTime'
 import { collectReadings } from './readings'
 import { sendMistingAlerts } from './push'
+import { adjustWateringIntervals } from './wateringInterval'
 import { SENTRY_DATA_COLLECTION, scrubBreadcrumb } from '../shared/sentry'
 
 // Runs every hour so the reminder can go out in the hour the owner usually waters.
@@ -66,7 +67,11 @@ const handler = {
         if (
           new Date(controller.scheduledTime).getUTCHours() === DAILY_UTC_HOUR
         ) {
-          jobs.push(learnHourFromHistory(env.DB), enrichPendingPlants(env))
+          jobs.push(
+            learnHourFromHistory(env.DB),
+            enrichPendingPlants(env),
+            adjustWateringIntervals(env.DB),
+          )
         }
         await Promise.allSettled(jobs)
         break

@@ -67,7 +67,7 @@ export async function identifyAndSave(
   const updated = await env.DB.prepare(
     `UPDATE plants
      SET name = ?, species = ?, common_name = ?, english_name = ?, category = ?,
-         light_needs = ?, water_every_days = ?, humidity_needs = ?, temp_min = ?,
+         light_needs = ?, water_every_days = ?, ai_water_every_days = ?, humidity_needs = ?, temp_min = ?,
          temp_max = ?, description = ?, reference_image_url = ?, reference_images = ?,
          care_notes = ?, enriched_version = ?, rejected_species = ?,
          identification_confirmed = 0
@@ -81,6 +81,7 @@ export async function identifyAndSave(
       identification.english_name,
       identification.category,
       identification.light_needs,
+      identification.water_every_days,
       identification.water_every_days,
       identification.humidity_needs,
       identification.temp_min,

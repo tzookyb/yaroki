@@ -9,6 +9,8 @@ beforeEach(async () => {
   await env.DB.batch(
     [
       'task_skips',
+      'task_skip_log',
+      'water_interval_changes',
       'misting_alerts',
       'events',
       'plants',
