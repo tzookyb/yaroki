@@ -47,17 +47,19 @@ export async function addPlant(fields: {
   room_id?: number | null
   name?: string
   water_every_days?: number | null
+  ai_water_every_days?: number | null
   last_watered?: string | null
   photo_key?: string | null
 }) {
   const { results } = await env.DB.prepare(
-    `INSERT INTO plants (room_id, name, water_every_days, last_watered, photo_key)
-     VALUES (?, ?, ?, ?, ?) RETURNING id`,
+    `INSERT INTO plants (room_id, name, water_every_days, ai_water_every_days, last_watered, photo_key)
+     VALUES (?, ?, ?, ?, ?, ?) RETURNING id`,
   )
     .bind(
       fields.room_id ?? null,
       fields.name ?? 'פיקוס',
       fields.water_every_days ?? null,
+      fields.ai_water_every_days ?? fields.water_every_days ?? null,
       fields.last_watered ?? null,
       fields.photo_key ?? null,
     )
