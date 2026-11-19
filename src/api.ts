@@ -10,10 +10,12 @@ import type {
   SensiboDevice,
   SkipReason,
   Task,
+  HistoryEntry,
   TaskList,
 } from '../shared/api'
 
 export type {
+  HistoryEntry,
   HomeLocation,
   Plant,
   PlantDetails,
@@ -125,6 +127,10 @@ export function addPlant(roomId: string, photo: Blob) {
 
 export function getPlant(id: string) {
   return request<PlantDetails>(`/api/plants/${id}`)
+}
+
+export function getPlantHistory(id: string) {
+  return request<HistoryEntry[]>(`/api/plants/${id}/history`)
 }
 
 export function enrichPlant(id: number) {

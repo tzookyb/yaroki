@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import {
   type Plant,
+  type HistoryEntry,
   type PlantDetails,
   type RoomProfile,
 } from '../../shared/api'
@@ -9,6 +10,7 @@ import { enrichPlant } from '../enrich'
 import { identifyAndSave } from '../identify'
 import { latestReading } from '../roomReading'
 import { idParam, skipBody } from '../schemas'
+import { getHistory } from '../history'
 import { getTasks, setTaskDone, setTaskSkipped } from '../tasks'
 
 const taskParam = idParam.extend({ type: z.string().regex(/^\w+$/) })
@@ -44,6 +46,12 @@ export const plantRoutes = createApp()
       tasks: await getTasks(c.env.DB, true, id),
     }
     return c.json(details)
+  })
+
+  .get('/:id/history', validate('param', idParam), async (c) => {
+    const { id } = c.req.valid('param')
+    const history: HistoryEntry[] = await getHistory(c.env.DB, id)
+    return c.json(history)
   })
 
   .delete('/:id', validate('param', idParam), async (c) => {

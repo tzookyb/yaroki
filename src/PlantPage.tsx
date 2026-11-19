@@ -6,7 +6,14 @@ import {
   temperatureFit,
   type Fit,
 } from '../shared/plantFit'
-import { getPlant, enrichPlant, type PlantDetails, type TaskList } from './api'
+import {
+  getPlant,
+  getPlantHistory,
+  enrichPlant,
+  type HistoryEntry,
+  type PlantDetails,
+  type TaskList,
+} from './api'
 import {
   CATEGORY_LABELS,
   HUMIDITY_LABELS,
@@ -68,7 +75,76 @@ function Need({
   )
 }
 
-const TASK_TITLES: Record<string, string> = { water: 'השקיה' }
+const TASK_TITLES: Record<string, string> = {
+  water: 'השקיה',
+  mist: 'ריסוס',
+}
+
+const SKIP_TEXT: Record<string, string> = {
+  wet_soil: 'האדמה עדיין רטובה',
+  other: 'לא הספקתי',
+  dormant: 'הצמח רדום',
+  away: 'לא הייתי בבית',
+}
+
+const CAUSE_TEXT: Record<string, string> = {
+  wet_soil_skips: 'דילוגים בגלל אדמה רטובה',
+  early_waterings: 'השקיות מוקדמות',
+  probe: 'בדיקה אוטומטית: החדר חם או יבש יותר',
+  probe_accepted: 'הבדיקה אושרה',
+  probe_failed: 'הבדיקה נכשלה, חוזרים לקודם',
+}
+
+function historyText(entry: HistoryEntry) {
+  if (entry.kind === 'task_done') {
+    return `✓ ${TASK_TITLES[entry.type] ?? entry.type} בוצעה`
+  }
+  if (entry.kind === 'task_skipped') {
+    const title = TASK_TITLES[entry.type] ?? entry.type
+    return `↷ ${title} נדחתה: ${SKIP_TEXT[entry.reason] ?? entry.reason}`
+  }
+  return `⟳ מרווח ההשקיה השתנה מ-${entry.from_days} ל-${entry.to_days} ימים (${CAUSE_TEXT[entry.cause] ?? entry.cause})`
+}
+
+function TaskHistory({ id }: { id: string }) {
+  const [entries, setEntries] = useState<HistoryEntry[] | null>(null)
+  const [failed, setFailed] = useState(false)
+
+  function load() {
+    if (entries) {
+      return
+    }
+    setFailed(false)
+    getPlantHistory(id).then(setEntries, () => setFailed(true))
+  }
+
+  return (
+    <details
+      className="room-profile plant-history"
+      onToggle={(event) => event.currentTarget.open && load()}
+    >
+      <summary>היסטוריית משימות</summary>
+      <div className="history-body">
+        {failed ? (
+          <p role="alert">לא הצלחנו לטעון את ההיסטוריה.</p>
+        ) : !entries ? (
+          <p className="muted">טוענים…</p>
+        ) : entries.length === 0 ? (
+          <p className="muted">עוד לא בוצעו משימות לצמח הזה.</p>
+        ) : (
+          <ul className="history-list">
+            {entries.map((entry, index) => (
+              <li key={index}>
+                <span>{historyText(entry)}</span>
+                <span className="muted">{formatDate(entry.date)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </details>
+  )
+}
 
 function formatDate(date: string) {
   return new Date(`${date}T00:00:00Z`).toLocaleDateString('he-IL', {
@@ -200,6 +276,7 @@ function PlantPage({ id, fromHome }: { id: string; fromHome: boolean }) {
           {plant.description && <p>{plant.description}</p>}
           {plant.care_notes && <p className="care-notes">{plant.care_notes}</p>}
           <UpcomingTasks list={plant.tasks} />
+          <TaskHistory id={id} />
           <h2>מה הצמח צריך</h2>
           <ul className="needs">
             <Need
