@@ -111,13 +111,18 @@ async function sendPush(
       signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
     })
     if (response.ok) {
+      console.log('Push accepted', response.status)
       return 'sent'
     }
     // 404 and 410 mean the subscription was cancelled or expired for good.
     if (response.status === 404 || response.status === 410) {
       return 'gone'
     }
-    console.error('Push service refused', response.status)
+    console.error(
+      'Push service refused',
+      response.status,
+      await response.text().catch(() => ''),
+    )
     return 'failed'
   } catch (error) {
     console.error('Push send failed', error)
@@ -150,7 +155,9 @@ export async function sendDueReminders(env: Env) {
   if (!vapidConfigured(env)) {
     return
   }
-  if (dueTaskCount(await getTasks(env.DB, false), 'water') === 0) {
+  const due = dueTaskCount(await getTasks(env.DB, false), 'water')
+  console.log('Watering reminder: due tasks', due)
+  if (due === 0) {
     return
   }
   await pushToAll(env)

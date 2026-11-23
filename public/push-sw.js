@@ -45,6 +45,7 @@ self.addEventListener('push', (event) => {
         lang: 'he',
         dir: 'rtl',
         tag: 'watering',
+        renotify: true,
       }),
     ),
   )
