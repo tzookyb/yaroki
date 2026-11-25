@@ -157,7 +157,12 @@ function TaskGroups({ list, busy, onDone, onSkip }: TaskGroupsProps) {
             return (
               <li
                 key={key}
-                className={task.done_today ? 'done' : ''}
+                className={[
+                  task.done_today && 'done',
+                  (label || task.skip_reason) && 'has-note',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
                 style={
                   swipe?.key === key
                     ? {
@@ -228,48 +233,50 @@ function TaskGroups({ list, busy, onDone, onSkip }: TaskGroupsProps) {
                       .join(' · ')}
                   </span>
                 </a>
-                {task.done_today ? (
-                  <button
-                    type="button"
-                    className="secondary"
-                    disabled={busy.includes(key)}
-                    onClick={() => onDone(task, false)}
-                  >
-                    ביטול
-                  </button>
-                ) : (
-                  <>
-                    {task.skip_reason ? (
-                      <button
-                        type="button"
-                        className="secondary"
-                        disabled={busy.includes(key)}
-                        onClick={() => onSkip(task, null)}
-                      >
-                        ביטול דחייה
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="secondary"
-                        disabled={busy.includes(key)}
-                        aria-expanded={choosing === key}
-                        onClick={() =>
-                          setChoosing(choosing === key ? null : key)
-                        }
-                      >
-                        דילוג
-                      </button>
-                    )}
+                <div className="task-actions">
+                  {task.done_today ? (
                     <button
                       type="button"
+                      className="secondary"
                       disabled={busy.includes(key)}
-                      onClick={() => onDone(task, true)}
+                      onClick={() => onDone(task, false)}
                     >
-                      {labels?.done ?? 'בוצע ✓'}
+                      ביטול
                     </button>
-                  </>
-                )}
+                  ) : (
+                    <>
+                      {task.skip_reason ? (
+                        <button
+                          type="button"
+                          className="secondary"
+                          disabled={busy.includes(key)}
+                          onClick={() => onSkip(task, null)}
+                        >
+                          ביטול דחייה
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="secondary"
+                          disabled={busy.includes(key)}
+                          aria-expanded={choosing === key}
+                          onClick={() =>
+                            setChoosing(choosing === key ? null : key)
+                          }
+                        >
+                          דילוג
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        disabled={busy.includes(key)}
+                        onClick={() => onDone(task, true)}
+                      >
+                        {labels?.done ?? 'בוצע ✓'}
+                      </button>
+                    </>
+                  )}
+                </div>
                 {choosing === key && (
                   <div
                     className="skip-reasons"

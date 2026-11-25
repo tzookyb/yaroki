@@ -901,6 +901,20 @@ form.room-profile {
   flex-wrap: wrap;
 }
 
+.task-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Cards with a due date or skip note keep their text wide; buttons drop below it. */
+.next-tasks li.has-note .task-actions {
+  flex-basis: 100%;
+}
+
+.next-tasks li.has-note .task-actions button {
+  flex: 1;
+}
+
 .skip-reasons {
   display: flex;
   flex-basis: 100%;
